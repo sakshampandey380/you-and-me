@@ -1,0 +1,2227 @@
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   Design Tokens & CSS Variables (Dark 3D & Light 3D Themes)
+   "Connect. Chat. Share. Together." | Made by Sakcham ❤️
+   ========================================================================== */
+
+:root {
+  /* Typography */
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Brand Accents */
+  --color-primary: #8a3ffc;
+  --color-primary-light: #a56eff;
+  --color-primary-glow: rgba(138, 63, 252, 0.45);
+  
+  --color-romantic-pink: #ff3366;
+  --color-romantic-rose: #ff6584;
+  --color-romantic-glow: rgba(255, 51, 102, 0.45);
+
+  --color-cyan-accent: #00e5ff;
+  --color-cyan-glow: rgba(0, 229, 255, 0.4);
+
+  --color-success: #00e676;
+  --color-warning: #ffab00;
+  --color-danger: #ff3b30;
+  --color-online: #00e676;
+
+  /* 3D Global Settings (Controlled by Settings view) */
+  --perspective: 1200px;
+  --depth-intensity: 1;
+  --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-bounce: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: all 0.15s ease-out;
+
+  /* Default / Dark 3D Theme */
+  --bg-space: #090a16;
+  --bg-gradient: radial-gradient(circle at 50% 20%, #151138 0%, #0a0b18 50%, #05060d 100%);
+  --bg-canvas-tint: rgba(10, 11, 25, 0.85);
+
+  --glass-surface-1: rgba(22, 24, 48, 0.65);
+  --glass-surface-2: rgba(29, 32, 64, 0.75);
+  --glass-surface-3: rgba(41, 46, 92, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-highlight: rgba(255, 255, 255, 0.25);
+  --glass-blur: blur(20px);
+  --glass-blur-subtle: blur(12px);
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-inverse: #090a16;
+
+  /* 3D Shadows & Layer Elevations */
+  --shadow-layer-1: 0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+  --shadow-layer-2: 0 12px 32px -4px rgba(0, 0, 0, 0.55), 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+  --shadow-layer-3: 0 24px 56px -6px rgba(0, 0, 0, 0.7), 0 8px 24px -3px rgba(0, 0, 0, 0.4);
+  --shadow-card-3d: 0 18px 45px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(255, 255, 255, 0.08) inset;
+  --shadow-glow-pink: 0 0 28px rgba(255, 51, 102, 0.45);
+  --shadow-glow-purple: 0 0 28px rgba(138, 63, 252, 0.45);
+
+  /* Message Bubbles - 3D Dark */
+  --bubble-outgoing-bg: linear-gradient(135deg, #7c2de6 0%, #ff3366 100%);
+  --bubble-outgoing-text: #ffffff;
+  --bubble-outgoing-shadow: 0 8px 22px rgba(138, 63, 252, 0.35), 0 1px 2px rgba(255, 255, 255, 0.3) inset;
+  --bubble-outgoing-border: rgba(255, 255, 255, 0.2);
+
+  --bubble-incoming-bg: rgba(30, 33, 62, 0.85);
+  --bubble-incoming-text: #ffffff;
+  --bubble-incoming-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(255, 255, 255, 0.12) inset;
+  --bubble-incoming-border: rgba(255, 255, 255, 0.1);
+
+  --input-bg: rgba(18, 20, 42, 0.8);
+  --input-border: rgba(255, 255, 255, 0.14);
+  --input-border-focus: #ff3366;
+
+  /* Layout dimensions */
+  --sidebar-width: 360px;
+  --header-height: 72px;
+  --composer-height: 76px;
+  --mobile-nav-height: 64px;
+}
+
+/* Light 3D Theme */
+[data-theme="light"] {
+  --bg-space: #f2f5fb;
+  --bg-gradient: radial-gradient(circle at 50% 20%, #ffffff 0%, #edf1fa 60%, #e1e7f5 100%);
+  --bg-canvas-tint: rgba(245, 248, 255, 0.7);
+
+  --glass-surface-1: rgba(255, 255, 255, 0.75);
+  --glass-surface-2: rgba(255, 255, 255, 0.88);
+  --glass-surface-3: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-highlight: rgba(255, 255, 255, 0.8);
+
+  --text-primary: #121426;
+  --text-secondary: rgba(18, 20, 38, 0.75);
+  --text-muted: rgba(18, 20, 38, 0.48);
+  --text-inverse: #ffffff;
+
+  --shadow-layer-1: 0 4px 16px -2px rgba(20, 24, 60, 0.08), 0 2px 6px -1px rgba(20, 24, 60, 0.04);
+  --shadow-layer-2: 0 12px 30px -4px rgba(20, 24, 60, 0.12), 0 4px 12px -2px rgba(20, 24, 60, 0.06);
+  --shadow-layer-3: 0 24px 50px -6px rgba(20, 24, 60, 0.18), 0 8px 20px -3px rgba(20, 24, 60, 0.08);
+  --shadow-card-3d: 0 18px 40px rgba(20, 24, 60, 0.12), 0 2px 4px rgba(255, 255, 255, 0.8) inset;
+
+  --bubble-outgoing-bg: linear-gradient(135deg, #7026e3 0%, #ff3366 100%);
+  --bubble-outgoing-text: #ffffff;
+  --bubble-outgoing-shadow: 0 8px 20px rgba(112, 38, 227, 0.28), 0 1px 2px rgba(255, 255, 255, 0.4) inset;
+  --bubble-outgoing-border: rgba(255, 255, 255, 0.35);
+
+  --bubble-incoming-bg: rgba(255, 255, 255, 0.92);
+  --bubble-incoming-text: #121426;
+  --bubble-incoming-shadow: 0 6px 18px rgba(20, 24, 60, 0.08), 0 1px 2px rgba(255, 255, 255, 0.9) inset;
+  --bubble-incoming-border: rgba(0, 0, 0, 0.06);
+
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --input-border: rgba(0, 0, 0, 0.12);
+  --input-border-focus: #ff3366;
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   Base & Reset Styles, Typography, 3D Scrollbars
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  background-color: var(--bg-space);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Accessible focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-romantic-pink);
+  outline-offset: 2px;
+}
+
+/* Custom 3D Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+  transition: var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-romantic-rose);
+  box-shadow: 0 0 12px var(--color-romantic-glow);
+}
+
+/* Headings & Text */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+a {
+  color: var(--color-romantic-rose);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  color: var(--color-romantic-pink);
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
+}
+
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 12px;
+  padding: 12px 16px;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--color-romantic-glow);
+}
+
+img, video {
+  max-width: 100%;
+  display: block;
+}
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Fullscreen app wrapper */
+#app-root {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Respect Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Animations, Keyframes & Micro-Interactions
+   ========================================================================== */
+
+/* Heart Pulse for Signature and Romantic accents */
+@keyframes heartGlowPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(255, 51, 102, 0.6));
+  }
+  50% {
+    transform: scale(1.16);
+    filter: drop-shadow(0 0 16px rgba(255, 51, 102, 0.95)) drop-shadow(0 0 24px rgba(255, 101, 132, 0.8));
+  }
+}
+
+/* Subtle floating 3D animation */
+@keyframes float3D {
+  0%, 100% {
+    transform: translateY(0px) translateZ(10px) rotateX(0deg);
+  }
+  50% {
+    transform: translateY(-8px) translateZ(25px) rotateX(3deg);
+  }
+}
+
+/* 3D Orb continuous rotation */
+@keyframes rotate3DOrb {
+  0% {
+    transform: rotateX(15deg) rotateY(0deg) rotateZ(0deg);
+  }
+  50% {
+    transform: rotateX(25deg) rotateY(180deg) rotateZ(10deg);
+  }
+  100% {
+    transform: rotateX(15deg) rotateY(360deg) rotateZ(0deg);
+  }
+}
+
+/* Subtle soft wave shimmer */
+@keyframes ambientWave {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.98) translateZ(0);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.04) translateZ(20px);
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(0.98) translateZ(0);
+  }
+}
+
+/* Message Bubble Entrance — gentle 3D elevation and settle */
+@keyframes messageEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96) translateZ(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+}
+
+/* Typing indicator dots bounce */
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* 3D Toast Entrance */
+@keyframes toastSlideIn3D {
+  0% {
+    opacity: 0;
+    transform: perspective(600px) translateY(-30px) rotateX(-20deg) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(600px) translateY(0) rotateX(0deg) scale(1);
+  }
+}
+
+/* Modal 3D Perspective Pop */
+@keyframes modalPop3D {
+  0% {
+    opacity: 0;
+    transform: perspective(800px) scale(0.85) rotateX(15deg) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(800px) scale(1) rotateX(0deg) translateY(0);
+  }
+}
+
+/* Reaction emoji bounce pop */
+@keyframes reactionPop {
+  0% {
+    transform: scale(0.4) rotate(-15deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.25) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Street lamp flicker / romantic soft breathing glow */
+@keyframes lampGlowBreath {
+  0%, 100% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 35px rgba(255, 215, 110, 0.75));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 55px rgba(255, 230, 150, 0.95));
+  }
+}
+
+/* Star twinkle */
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Apply animation helper classes */
+.anim-heart-pulse {
+  display: inline-block;
+  animation: heartGlowPulse 2.4s infinite ease-in-out;
+  transform-origin: center;
+}
+
+.anim-float-3d {
+  animation: float3D 6s infinite ease-in-out;
+}
+
+.anim-message-enter {
+  animation: messageEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-reaction-pop {
+  animation: reactionPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Background System & Canvas Overlays
+   ========================================================================== */
+
+.background-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--bg-gradient);
+}
+
+/* Master 3D Canvas */
+#bg-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+}
+
+/* Romantic Scene Canvas (Active on Auth screen) */
+#romantic-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 2;
+  transition: opacity 0.8s ease-in-out;
+  opacity: 1;
+}
+
+#romantic-canvas.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Ambient 3D Spatial Glow Orbs */
+.spatial-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.45;
+  transition: var(--transition-smooth);
+}
+
+.spatial-glow-1 {
+  width: 45vw;
+  height: 45vw;
+  max-width: 600px;
+  max-height: 600px;
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(circle, var(--color-primary-glow) 0%, transparent 70%);
+  animation: ambientWave 12s infinite alternate ease-in-out;
+}
+
+.spatial-glow-2 {
+  width: 50vw;
+  height: 50vw;
+  max-width: 700px;
+  max-height: 700px;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, var(--color-romantic-glow) 0%, transparent 70%);
+  animation: ambientWave 15s infinite alternate-reverse ease-in-out;
+}
+
+.spatial-glow-3 {
+  width: 35vw;
+  height: 35vw;
+  max-width: 500px;
+  max-height: 500px;
+  top: 40%;
+  left: 30%;
+  background: radial-gradient(circle, var(--color-cyan-glow) 0%, transparent 70%);
+  opacity: 0.2;
+}
+
+/* Depth Grid Overlay (Subtle 3D plane) */
+.spatial-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 30%, transparent 80%);
+  z-index: 1;
+  opacity: 0.6;
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Components, Glass Cards, Buttons, Modals, Toasts & Creator Signature
+   ========================================================================== */
+
+/* Glass Panels */
+.glass-panel {
+  background: var(--glass-surface-1);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-layer-2);
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  transition: var(--transition-smooth);
+}
+
+.glass-panel-elevated {
+  background: var(--glass-surface-2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  box-shadow: var(--shadow-card-3d);
+}
+
+/* 3D Interactive Tilt Card */
+.card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.25s ease-out, box-shadow 0.25s ease-out;
+  will-change: transform;
+}
+
+.card-3d:hover {
+  transform: translateY(-4px) translateZ(12px);
+  box-shadow: var(--shadow-layer-3), var(--shadow-glow-purple);
+}
+
+/* 3D Buttons */
+.btn-3d {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  border-radius: 14px;
+  padding: 12px 22px;
+  cursor: pointer;
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, background 0.2s ease;
+  user-select: none;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn-3d:active {
+  transform: translateY(2px) scale(0.98);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-romantic-pink) 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 6px 20px rgba(138, 63, 252, 0.4), 0 1px 2px rgba(255, 255, 255, 0.3) inset;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 8px 25px rgba(255, 51, 102, 0.5), 0 1px 2px rgba(255, 255, 255, 0.5) inset;
+  transform: translateY(-2px);
+}
+
+.btn-glass {
+  background: var(--glass-surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-layer-1);
+}
+
+.btn-glass:hover {
+  background: var(--glass-surface-3);
+  border-color: var(--glass-border-highlight);
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ff3b30 0%, #d32f2f 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.35);
+}
+
+.btn-icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-surface-1);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-layer-1);
+}
+
+.btn-icon:hover {
+  background: var(--glass-surface-2);
+  border-color: var(--glass-border-highlight);
+  color: var(--color-romantic-pink);
+  transform: translateY(-2px) scale(1.05);
+}
+
+/* 3D Avatars */
+.avatar-wrap {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.avatar-img {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border-highlight);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(135deg, #2d1b69 0%, #4a154b 100%);
+}
+
+.avatar-lg .avatar-img {
+  width: 84px;
+  height: 84px;
+  border-width: 3px;
+}
+
+.avatar-sm .avatar-img {
+  width: 38px;
+  height: 38px;
+}
+
+.avatar-status {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--bg-space);
+  background-color: var(--text-muted);
+}
+
+.avatar-status.online {
+  background-color: var(--color-online);
+  box-shadow: 0 0 10px var(--color-online);
+}
+
+/* Badges */
+.badge-count {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-romantic-pink) 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--color-romantic-glow);
+}
+
+/* 3D Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.toast-3d {
+  pointer-events: auto;
+  min-width: 280px;
+  max-width: 380px;
+  padding: 14px 18px;
+  border-radius: 16px;
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  box-shadow: var(--shadow-layer-3), 0 0 20px var(--color-primary-glow);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: toastSlideIn3D 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.toast-3d.toast-success {
+  border-left: 4px solid var(--color-success);
+}
+
+.toast-3d.toast-error {
+  border-left: 4px solid var(--color-danger);
+}
+
+.toast-3d.toast-info {
+  border-left: 4px solid var(--color-romantic-pink);
+}
+
+/* Modals */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 15, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.modal-backdrop.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-3d {
+  width: 100%;
+  max-width: 480px;
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: 24px;
+  box-shadow: var(--shadow-layer-3), var(--shadow-glow-purple);
+  padding: 28px;
+  position: relative;
+  transform: perspective(800px) scale(0.9) translateY(20px);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.modal-backdrop.active .modal-3d {
+  transform: perspective(800px) scale(1) translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.modal-close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: var(--transition-fast);
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+/* Fullscreen Media Lightbox */
+.media-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 6, 12, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.media-lightbox.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.media-lightbox-content {
+  max-width: 90vw;
+  max-height: 80vh;
+  object-fit: contain;
+  border-radius: 16px;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.8), 0 0 30px var(--color-romantic-glow);
+  transform: scale(0.95);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.media-lightbox.active .media-lightbox-content {
+  transform: scale(1);
+}
+
+.media-lightbox-toolbar {
+  position: absolute;
+  top: 24px;
+  display: flex;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 16px;
+  border-radius: 30px;
+}
+
+/* ==========================================================================
+   CREATOR SIGNATURE: "Made by Sakcham ❤️"
+   Mandated in Prompt Sections #63 - #71
+   ========================================================================== */
+
+.creator-signature {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: var(--glass-surface-1);
+  backdrop-filter: var(--glass-blur-subtle);
+  -webkit-backdrop-filter: var(--glass-blur-subtle);
+  border: 1px solid var(--glass-border);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.creator-signature:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 51, 102, 0.35);
+  box-shadow: 0 6px 20px rgba(255, 51, 102, 0.25);
+  color: var(--text-primary);
+}
+
+.creator-signature .heart-icon {
+  color: var(--color-romantic-pink);
+  display: inline-block;
+  font-size: 14px;
+  animation: heartGlowPulse 2.4s infinite ease-in-out;
+  transform-origin: center;
+}
+
+/* Desktop Placement: Centered footer / sidebar footer */
+.desktop-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0;
+  margin-top: auto;
+  z-index: 5;
+}
+
+/* Mobile Scrollable View Footer */
+.mobile-view-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0 16px 0;
+  margin-top: auto;
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Auth Page & Romantic Scene View
+   "Connect. Chat. Share. Together."
+   ========================================================================== */
+
+.auth-view-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 10;
+  overflow-y: auto;
+  perspective: 1200px;
+}
+
+.auth-layout-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+  position: relative;
+  z-index: 15;
+}
+
+/* 3D App Branding Header on Auth */
+.auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.auth-logo-emblem {
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-romantic-pink) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px var(--color-romantic-glow), 0 2px 4px rgba(255, 255, 255, 0.4) inset;
+  margin-bottom: 12px;
+  animation: float3D 6s infinite ease-in-out;
+  transform-style: preserve-3d;
+}
+
+.auth-logo-emblem svg {
+  width: 36px;
+  height: 36px;
+  fill: #ffffff;
+}
+
+.auth-title {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #ffffff 30%, var(--color-romantic-rose) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 4px;
+}
+
+.auth-tagline {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+/* 3D Auth Glass Card */
+.auth-card-3d {
+  width: 100%;
+  background: var(--glass-surface-2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: 28px;
+  padding: 32px 28px;
+  box-shadow: var(--shadow-layer-3), var(--shadow-glow-pink);
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Auth Navigation Tabs (Sign In / Sign Up) */
+.auth-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 16px;
+  padding: 4px;
+  margin-bottom: 24px;
+  border: 1px solid var(--glass-border);
+}
+
+.auth-tab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: center;
+  transition: var(--transition-fast);
+}
+
+.auth-tab-btn.active {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-romantic-pink) 100%);
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--color-romantic-glow);
+}
+
+/* Form Groups & Inputs */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.input-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  display: flex;
+  justify-content: space-between;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon svg {
+  position: absolute;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: var(--transition-fast);
+}
+
+.input-with-icon input {
+  width: 100%;
+  padding-left: 44px;
+  padding-right: 42px;
+}
+
+.input-with-icon input:focus ~ svg {
+  color: var(--color-romantic-pink);
+}
+
+.password-toggle-btn {
+  position: absolute;
+  right: 12px;
+  padding: 6px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-btn:hover {
+  color: var(--text-primary);
+}
+
+/* Avatar Upload / Selector on Sign Up */
+.avatar-selection-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.avatar-preview-box {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 2px dashed var(--color-romantic-pink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  background: rgba(255, 51, 102, 0.08);
+  position: relative;
+  transition: var(--transition-fast);
+}
+
+.avatar-preview-box:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px var(--color-romantic-glow);
+}
+
+.avatar-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-upload-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.avatar-upload-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.avatar-upload-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Auth helper row (remember me & forgot pass) */
+.auth-aux-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.remember-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.remember-label input[type="checkbox"] {
+  accent-color: var(--color-romantic-pink);
+  width: 16px;
+  height: 16px;
+}
+
+/* Auth submit button */
+.auth-submit-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 15px;
+  margin-top: 8px;
+}
+
+/* Auth footer signature */
+.auth-signature-wrap {
+  margin-top: 24px;
+  display: flex;
+  justify-content: center;
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Chat Stream, Message Bubbles, Composer, Typing & Reactions
+   ========================================================================== */
+
+/* Main Chat Container */
+.chat-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* Chat Header */
+.chat-header {
+  height: var(--header-height);
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--glass-surface-2);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  z-index: 20;
+  box-shadow: var(--shadow-layer-1);
+}
+
+.chat-header-user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 6px 10px;
+  margin-left: -10px;
+  transition: var(--transition-fast);
+}
+
+.chat-header-user:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.chat-header-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-header-status {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.chat-header-status.typing {
+  color: var(--color-romantic-rose);
+  font-weight: 600;
+}
+
+.chat-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Chat Search Bar */
+.chat-search-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  animation: toastSlideIn3D 0.25s ease-out;
+}
+
+.chat-search-bar.active {
+  display: flex;
+}
+
+.chat-search-input {
+  flex: 1;
+  padding: 8px 14px;
+  font-size: 13.5px;
+}
+
+/* Messages Scroll Stream */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+
+/* Date Separator */
+.date-separator {
+  align-self: center;
+  padding: 4px 14px;
+  border-radius: 14px;
+  background: var(--glass-surface-1);
+  border: 1px solid var(--glass-border);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 12px 0;
+  box-shadow: var(--shadow-layer-1);
+}
+
+/* 3D Message Bubble */
+.message-row {
+  display: flex;
+  flex-direction: column;
+  max-width: 75%;
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.message-row.outgoing {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.message-row.incoming {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.message-bubble {
+  position: relative;
+  padding: 12px 16px;
+  border-radius: 20px;
+  color: var(--text-primary);
+  word-break: break-word;
+  box-shadow: var(--shadow-layer-1);
+  border: 1px solid transparent;
+  transform-style: preserve-3d;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  user-select: text;
+}
+
+.message-row.outgoing .message-bubble {
+  background: var(--bubble-outgoing-bg);
+  color: var(--bubble-outgoing-text);
+  border-color: var(--bubble-outgoing-border);
+  box-shadow: var(--bubble-outgoing-shadow);
+  border-bottom-right-radius: 4px;
+}
+
+.message-row.incoming .message-bubble {
+  background: var(--bubble-incoming-bg);
+  color: var(--bubble-incoming-text);
+  border-color: var(--bubble-incoming-border);
+  box-shadow: var(--bubble-incoming-shadow);
+  border-bottom-left-radius: 4px;
+}
+
+.message-bubble:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
+/* Message Status & Time */
+.message-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.message-row.incoming .message-meta {
+  color: var(--text-muted);
+}
+
+.message-status-icon {
+  display: inline-flex;
+  font-size: 12px;
+}
+
+.message-status-icon.read {
+  color: var(--color-cyan-accent);
+}
+
+/* Large Emoji only */
+.message-bubble.emoji-only {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  font-size: 48px;
+  line-height: 1.2;
+  padding: 4px 0;
+}
+
+/* Image Message */
+.message-image-wrap {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  max-width: 320px;
+  max-height: 320px;
+}
+
+.message-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.message-image-wrap:hover img {
+  transform: scale(1.03);
+}
+
+/* Video Message */
+.message-video-wrap {
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+  max-width: 320px;
+}
+
+.message-video-wrap video {
+  width: 100%;
+  border-radius: 14px;
+}
+
+/* File / Document Message */
+.message-file-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px;
+}
+
+.message-file-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.message-file-details {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.message-file-name {
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 180px;
+}
+
+.message-file-size {
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+/* Quoted Reply inside Message Bubble */
+.quoted-message-box {
+  border-left: 3px solid var(--color-romantic-pink);
+  padding: 4px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.quoted-sender {
+  font-weight: 700;
+  color: var(--color-romantic-rose);
+  margin-bottom: 2px;
+}
+
+.quoted-text {
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* Message Reactions */
+.message-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: -6px;
+  margin-bottom: 4px;
+  z-index: 5;
+}
+
+.reaction-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--glass-surface-2);
+  border: 1px solid var(--glass-border-highlight);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-layer-1);
+  transition: transform 0.15s ease;
+}
+
+.reaction-pill:hover {
+  transform: scale(1.15);
+}
+
+.reaction-pill.reacted-by-me {
+  border-color: var(--color-romantic-pink);
+  background: rgba(255, 51, 102, 0.15);
+}
+
+/* Message Context Menu */
+.message-context-menu {
+  position: absolute;
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: 16px;
+  box-shadow: var(--shadow-layer-3), var(--shadow-glow-purple);
+  padding: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 100;
+  min-width: 170px;
+  animation: modalPop3D 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.message-context-menu.active {
+  display: flex;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.context-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--color-romantic-pink);
+}
+
+.context-menu-item.danger {
+  color: var(--color-danger);
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(255, 59, 48, 0.15);
+}
+
+/* Quick Reaction Bar on Hover/Tap */
+.quick-reaction-bar {
+  position: absolute;
+  top: -38px;
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: 24px;
+  box-shadow: var(--shadow-layer-2);
+  display: flex;
+  gap: 6px;
+  padding: 4px 8px;
+  z-index: 15;
+  animation: modalPop3D 0.2s ease;
+}
+
+.quick-react-btn {
+  font-size: 18px;
+  padding: 2px 4px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.quick-react-btn:hover {
+  transform: scale(1.3) translateY(-2px);
+}
+
+/* Active Typing Indicator row inside message stream */
+.typing-indicator-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 18px;
+  background: var(--glass-surface-1);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-layer-1);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+}
+
+.typing-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-romantic-rose);
+  animation: typingDot 1.4s infinite ease-in-out;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+/* Quoted Reply Preview Bar above Composer */
+.reply-preview-bar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 18px;
+  background: var(--glass-surface-2);
+  border-top: 1px solid var(--glass-border);
+  border-left: 4px solid var(--color-romantic-pink);
+  z-index: 15;
+}
+
+.reply-preview-bar.active {
+  display: flex;
+}
+
+.reply-preview-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.reply-preview-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-romantic-pink);
+}
+
+.reply-preview-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 400px;
+}
+
+/* 3D Floating Composer */
+.chat-composer-wrap {
+  padding: 12px 20px;
+  position: relative;
+  z-index: 20;
+  background: var(--glass-surface-1);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border);
+}
+
+.composer-inner {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 24px;
+  padding: 6px 12px;
+  box-shadow: var(--shadow-layer-1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.composer-inner:focus-within {
+  border-color: var(--input-border-focus);
+  box-shadow: 0 0 0 3px var(--color-romantic-glow);
+}
+
+.composer-textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  box-shadow: none !important;
+  resize: none;
+  padding: 10px 4px;
+  max-height: 120px;
+  font-size: 14.5px;
+  line-height: 1.4;
+  outline: none;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 4px;
+}
+
+.composer-send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-romantic-pink) 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px var(--color-romantic-glow);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.composer-send-btn:hover {
+  transform: scale(1.08) translateY(-2px);
+  box-shadow: 0 6px 20px var(--color-romantic-glow);
+}
+
+.composer-send-btn:active {
+  transform: scale(0.95);
+}
+
+/* Emoji Picker Dropdown */
+.emoji-picker-panel {
+  position: absolute;
+  bottom: 80px;
+  right: 20px;
+  width: 320px;
+  height: 340px;
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: 20px;
+  box-shadow: var(--shadow-layer-3), var(--shadow-glow-purple);
+  display: none;
+  flex-direction: column;
+  z-index: 100;
+  overflow: hidden;
+  animation: modalPop3D 0.25s ease;
+}
+
+.emoji-picker-panel.active {
+  display: flex;
+}
+
+.emoji-search-box {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.emoji-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  font-size: 22px;
+}
+
+.emoji-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.emoji-item:hover {
+  background: rgba(255, 255, 255, 0.15);
+  transform: scale(1.25);
+}
+
+
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   Responsive Layout Engine, Mobile Drawer, Bottom Nav & Screen Adaptations
+   Tested across 320px to 1920px+
+   ========================================================================== */
+
+/* Main App Layout */
+.app-dashboard {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+}
+
+/* Left Sidebar (Desktop / Tablet) */
+.app-sidebar {
+  width: var(--sidebar-width);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-surface-1);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-layer-2);
+  z-index: 30;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-emblem-sm {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-romantic-pink) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 14px var(--color-romantic-glow);
+}
+
+.brand-text-sm {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-name-sm {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 40%, var(--color-romantic-rose) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-tagline-sm {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+/* Greeting Widget */
+.greeting-banner {
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.greeting-highlight {
+  color: var(--color-romantic-rose);
+}
+
+/* Sidebar Search */
+.sidebar-search-box {
+  padding: 12px 20px;
+}
+
+/* Navigation Tabs */
+.sidebar-nav-tabs {
+  display: flex;
+  padding: 0 16px 12px 16px;
+  gap: 6px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.nav-tab-btn {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: var(--transition-fast);
+  position: relative;
+}
+
+.nav-tab-btn.active {
+  background: var(--glass-surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--glass-border-highlight);
+  box-shadow: var(--shadow-layer-1);
+}
+
+.nav-tab-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+}
+
+/* Conversations & Friends List */
+.sidebar-content-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Conversation Item (3D Card style) */
+.chat-list-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--glass-surface-1);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.chat-list-item:hover {
+  background: var(--glass-surface-2);
+  border-color: var(--glass-border-highlight);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-layer-2);
+}
+
+.chat-list-item.active {
+  background: linear-gradient(135deg, rgba(138, 63, 252, 0.2) 0%, rgba(255, 51, 102, 0.2) 100%);
+  border-color: var(--color-romantic-pink);
+  box-shadow: 0 4px 16px var(--color-romantic-glow);
+}
+
+.chat-item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.chat-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.chat-item-name {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-item-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.chat-item-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chat-item-lastmsg {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.chat-item-lastmsg.typing {
+  color: var(--color-romantic-rose);
+  font-weight: 600;
+}
+
+/* Empty State Styling */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  margin: auto;
+  gap: 14px;
+}
+
+.empty-state-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: var(--glass-surface-2);
+  border: 1px solid var(--glass-border-highlight);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30px;
+  color: var(--color-romantic-rose);
+  box-shadow: var(--shadow-layer-2), var(--shadow-glow-pink);
+  animation: float3D 5s infinite ease-in-out;
+}
+
+.empty-state-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-state-text {
+  font-size: 13.5px;
+  color: var(--text-muted);
+  max-width: 260px;
+}
+
+/* Main Content Views Area */
+.app-main-view {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Secondary Panels (Friends, Profile, Settings, Notifications) */
+.subview-container {
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.subview-container.active {
+  display: flex;
+}
+
+/* Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  display: none;
+  height: var(--mobile-nav-height);
+  background: var(--glass-surface-3);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-top: 1px solid var(--glass-border-highlight);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 50;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 10px;
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 12px;
+  transition: var(--transition-fast);
+  position: relative;
+}
+
+.mobile-nav-item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.mobile-nav-item.active {
+  color: var(--color-romantic-pink);
+  transform: translateY(-2px);
+}
+
+.mobile-nav-item.active svg {
+  filter: drop-shadow(0 0 6px var(--color-romantic-glow));
+}
+
+/* Mobile Header Back Button (Inside Chat) */
+.mobile-back-btn {
+  display: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  margin-right: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   MOBILE BREAKPOINTS (< 768px)
+   ========================================================================== */
+@media (max-width: 768px) {
+  .app-sidebar {
+    width: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 25;
+    padding-bottom: var(--mobile-nav-height);
+  }
+
+  .app-sidebar.chat-open {
+    display: none;
+  }
+
+  .app-main-view {
+    width: 100%;
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: none;
+  }
+
+  .app-main-view.chat-open {
+    display: flex;
+    z-index: 35;
+  }
+
+  .mobile-back-btn {
+    display: flex;
+  }
+
+  .mobile-bottom-nav {
+    display: flex;
+  }
+
+  .app-main-view.chat-open ~ .mobile-bottom-nav,
+  .app-dashboard.in-chat .mobile-bottom-nav {
+    display: none; /* Hide bottom nav when in active chat so composer has full room */
+  }
+
+  .desktop-footer {
+    display: none; /* Desktop footer hidden on mobile; mobile uses scroll footer */
+  }
+
+  .chat-composer-wrap {
+    padding: 8px 12px 14px 12px;
+  }
+
+  .message-row {
+    max-width: 88%;
+  }
+
+  .subview-container {
+    padding: 16px 16px calc(var(--mobile-nav-height) + 16px) 16px;
+  }
+}
+
+/* Small phones (< 380px) */
+@media (max-width: 380px) {
+  .chat-header {
+    padding: 0 10px;
+  }
+  .chat-messages {
+    padding: 12px 10px;
+  }
+  .composer-inner {
+    padding: 4px 8px;
+  }
+}

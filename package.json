@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "You & Me — 3D Chat Application. Connect. Chat. Share. Together. Made by Sakcham ❤️",
   "scripts": {
-    "build": "npx esbuild js/app.js --bundle --outfile=js/bundle.js --format=iife",
+    "build": "node build.js",
     "start": "npx serve ."
   },
   "keywords": ["chat", "3d", "messaging", "glassmorphism", "html5", "css3", "javascript"],
