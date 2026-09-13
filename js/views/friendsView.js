@@ -59,8 +59,15 @@ export class FriendsView {
           <div class="empty-state-icon">👥</div>
           <div class="empty-state-title">Build Your Circle</div>
           <div class="empty-state-text">Search for users and connect with friends to start chatting!</div>
+          <button class="btn-3d btn-primary btn-goto-find-friends" style="margin-top: 10px; font-size: 13px; padding: 8px 18px;">
+            Find Friends
+          </button>
         </div>
       `;
+      listContainer.querySelector('.btn-goto-find-friends')?.addEventListener('click', () => {
+        this.currentSubTab = 'search';
+        this.render();
+      });
       return;
     }
 
@@ -197,6 +204,7 @@ export class FriendsView {
       btn.addEventListener('click', () => {
         friendService.acceptFriendRequest(btn.dataset.reqId);
         toast.success("Friend request accepted! ✨");
+        window.dispatchEvent(new CustomEvent('ym:friends_updated'));
         this.render();
       });
     });
@@ -205,6 +213,7 @@ export class FriendsView {
       btn.addEventListener('click', () => {
         friendService.rejectFriendRequest(btn.dataset.reqId);
         toast.info("Request declined.");
+        window.dispatchEvent(new CustomEvent('ym:friends_updated'));
         this.render();
       });
     });
@@ -213,6 +222,7 @@ export class FriendsView {
       btn.addEventListener('click', () => {
         friendService.cancelSentRequest(btn.dataset.userId);
         toast.info("Request canceled.");
+        window.dispatchEvent(new CustomEvent('ym:friends_updated'));
         this.render();
       });
     });
@@ -287,8 +297,11 @@ export class FriendsView {
       resultsContainer.querySelectorAll('.btn-add-user').forEach(btn => {
         btn.addEventListener('click', () => {
           try {
+            const targetUser = userService.getUserById(btn.dataset.userId);
             friendService.sendFriendRequest(btn.dataset.userId);
-            toast.success("Friend request sent! 💌");
+            const targetDisplay = targetUser ? `${targetUser.name} (${targetUser.userId})` : btn.dataset.userId;
+            toast.success(`Friend request sent to ${targetDisplay}! 💌`);
+            window.dispatchEvent(new CustomEvent('ym:friends_updated'));
             doSearch(searchInput.value);
           } catch (err) {
             toast.error(err.message);
@@ -300,6 +313,7 @@ export class FriendsView {
         btn.addEventListener('click', () => {
           friendService.cancelSentRequest(btn.dataset.userId);
           toast.info("Request canceled.");
+          window.dispatchEvent(new CustomEvent('ym:friends_updated'));
           doSearch(searchInput.value);
         });
       });

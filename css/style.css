@@ -2093,6 +2093,50 @@ img, video {
   display: flex;
 }
 
+/* Subview Top Bar */
+.subview-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--glass-border);
+  gap: 12px;
+}
+
+.subview-header-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  flex: 1;
+}
+
+.mobile-subview-back-btn {
+  display: none;
+}
+
+/* Chat Welcome Placeholder (Desktop when no active conversation is opened) */
+.chat-welcome-placeholder {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+}
+
+.chat-welcome-card {
+  max-width: 500px;
+  width: 100%;
+  padding: 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 28px;
+}
+
 /* Mobile Bottom Navigation Bar */
 .mobile-bottom-nav {
   display: none;
@@ -2121,15 +2165,21 @@ img, video {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 600;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 12px;
   transition: var(--transition-fast);
   position: relative;
+  cursor: pointer;
 }
 
 .mobile-nav-item svg {
   width: 20px;
   height: 20px;
+}
+
+.mobile-nav-item:hover:not(.active) {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .mobile-nav-item.active {
@@ -2152,6 +2202,15 @@ img, video {
   color: var(--text-primary);
   margin-right: 6px;
   background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+/* Notification Bell Active State */
+.notif-bell-btn.active {
+  color: var(--color-romantic-pink);
+  background: var(--glass-surface-2);
+  border-color: var(--glass-border-highlight);
+  box-shadow: 0 0 14px var(--color-romantic-glow);
 }
 
 /* ==========================================================================
@@ -2164,40 +2223,75 @@ img, video {
     inset: 0;
     z-index: 25;
     padding-bottom: var(--mobile-nav-height);
+    display: flex;
+    flex-direction: column;
   }
 
-  .app-sidebar.chat-open {
-    display: none;
+  /* When active chat is open OR when viewing subviews on mobile, hide the sidebar */
+  .app-sidebar.chat-open,
+  .app-dashboard[data-current-view="friends"] .app-sidebar,
+  .app-dashboard[data-current-view="profile"] .app-sidebar,
+  .app-dashboard[data-current-view="settings"] .app-sidebar,
+  .app-dashboard[data-current-view="notifications"] .app-sidebar {
+    display: none !important;
   }
 
+  /* Main view area on mobile */
   .app-main-view {
     width: 100%;
     position: absolute;
     inset: 0;
-    z-index: 20;
+    z-index: 25;
     display: none;
+    flex-direction: column;
+  }
+
+  /* Show main view when chat is open OR when viewing friends/profile/settings/notifications */
+  .app-main-view.chat-open,
+  .app-dashboard[data-current-view="friends"] .app-main-view,
+  .app-dashboard[data-current-view="profile"] .app-main-view,
+  .app-dashboard[data-current-view="settings"] .app-main-view,
+  .app-dashboard[data-current-view="notifications"] .app-main-view {
+    display: flex !important;
   }
 
   .app-main-view.chat-open {
-    display: flex;
     z-index: 35;
+  }
+
+  /* Hide the desktop welcome placeholder on mobile */
+  .chat-welcome-placeholder {
+    display: none !important;
   }
 
   .mobile-back-btn {
     display: flex;
   }
 
+  .mobile-subview-back-btn {
+    display: flex;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.08);
+    cursor: pointer;
+  }
+
   .mobile-bottom-nav {
     display: flex;
   }
 
+  /* When in active chat, hide bottom nav so composer has maximum thumb room */
   .app-main-view.chat-open ~ .mobile-bottom-nav,
   .app-dashboard.in-chat .mobile-bottom-nav {
-    display: none; /* Hide bottom nav when in active chat so composer has full room */
+    display: none !important;
   }
 
   .desktop-footer {
-    display: none; /* Desktop footer hidden on mobile; mobile uses scroll footer */
+    display: none;
   }
 
   .chat-composer-wrap {
@@ -2209,7 +2303,12 @@ img, video {
   }
 
   .subview-container {
-    padding: 16px 16px calc(var(--mobile-nav-height) + 16px) 16px;
+    padding: 14px 16px calc(var(--mobile-nav-height) + 16px) 16px;
+    height: 100%;
+  }
+
+  .friends-subtabs-wrap {
+    margin-bottom: 12px;
   }
 }
 

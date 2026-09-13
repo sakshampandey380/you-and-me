@@ -78,6 +78,13 @@ export class ChatView {
     document.querySelector('.app-sidebar')?.classList.remove('chat-open');
     document.querySelector('.app-main-view')?.classList.remove('chat-open');
     document.querySelector('.app-dashboard')?.classList.remove('in-chat');
+
+    const chatScreen = document.getElementById('chat-screen');
+    const welcomePlaceholder = document.getElementById('chat-welcome-placeholder');
+    if (chatScreen) chatScreen.style.display = 'none';
+    if (welcomePlaceholder && window.ymApp && window.ymApp.currentView === 'chats') {
+      welcomePlaceholder.style.display = 'flex';
+    }
   }
 
   renderMessages(searchQuery = '') {
@@ -422,6 +429,9 @@ export class ChatView {
     // Back Button (Mobile)
     document.getElementById('chat-back-btn')?.addEventListener('click', () => {
       this.closeConversation();
+      if (window.ymApp) {
+        window.ymApp.switchView('chats');
+      }
     });
 
     // Cancel Reply Button

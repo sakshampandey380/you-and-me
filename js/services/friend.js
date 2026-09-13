@@ -36,7 +36,7 @@ class FriendService {
     if (!match) return 'none';
     if (match.status === 'accepted') return 'friends';
     if (match.status === 'pending') {
-      return this._resolveId(f.user1) === current.userId ? 'request_sent' : 'request_received';
+      return this._resolveId(match.user1) === current.userId ? 'request_sent' : 'request_received';
     }
     return 'none';
   }

@@ -19,10 +19,13 @@ export class NotificationsView {
 
     this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 16px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <h2 style="font-size: 22px; font-weight: 800;">Notifications</h2>
+        <div class="subview-top-bar">
+          <button class="btn-icon mobile-subview-back-btn" data-view="chats" title="Back to Chats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h2 class="subview-header-title">Notifications</h2>
           <div style="display: flex; gap: 8px;">
-            <button class="btn-3d btn-glass" id="btn-mark-all-notifs-read" style="padding: 6px 12px; font-size: 12px;">Mark All Read</button>
+            <button class="btn-3d btn-glass" id="btn-mark-all-notifs-read" style="padding: 6px 12px; font-size: 12px;">Mark Read</button>
             <button class="btn-3d btn-glass" id="btn-clear-all-notifs" style="padding: 6px 12px; font-size: 12px; color: var(--color-danger);">Clear</button>
           </div>
         </div>

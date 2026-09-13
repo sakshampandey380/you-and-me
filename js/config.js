@@ -8,8 +8,8 @@ export const APP_CONFIG = {
   name: "You & Me",
   tagline: "Connect. Chat. Share. Together.",
   creatorSignature: "Made by Sakcham ❤️",
-  version: "1.0.0",
-  storagePrefix: "ym_3d_",
+  version: "2.0.0",
+  storagePrefix: "ym_3d_v2_",
   uniqueIdPrefix: "YM-",
   defaultAvatar: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%238a3ffc'/><stop offset='100%' stop-color='%23ff3366'/></linearGradient></defs><circle cx='50' cy='50' r='50' fill='url(%23g)'/><circle cx='50' cy='38' r='18' fill='%23ffffff' opacity='0.9'/><path d='M20,84 C20,64 35,58 50,58 C65,58 80,64 80,84 Z' fill='%23ffffff' opacity='0.9'/></svg>"
 };
@@ -82,88 +82,7 @@ export const INITIAL_DEMO_USERS = [
   }
 ];
 
-export const INITIAL_DEMO_CONVERSATIONS = [
-  {
-    conversationId: "conv-alex",
-    participants: ["CURRENT_USER", "YM-482913"],
-    createdAt: "2026-09-10T10:00:00Z",
-    unreadCount: 1,
-    messages: [
-      {
-        id: "msg-101",
-        senderId: "YM-482913",
-        type: "text",
-        text: "Hey! Welcome to You & Me 🚀 The 3D atmosphere here feels unbelievable!",
-        timestamp: "2026-09-13T18:20:00Z",
-        status: "read",
-        reactions: [{ emoji: "❤️", userIds: ["CURRENT_USER"] }]
-      },
-      {
-        id: "msg-102",
-        senderId: "CURRENT_USER",
-        type: "text",
-        text: "I love the floating particles and depth! How are you doing today?",
-        timestamp: "2026-09-13T18:22:00Z",
-        status: "read",
-        reactions: [{ emoji: "🔥", userIds: ["YM-482913"] }]
-      },
-      {
-        id: "msg-103",
-        senderId: "YM-482913",
-        type: "image",
-        mediaUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
-        caption: "Check out the starry night view from the hill tonight! 🌌",
-        timestamp: "2026-09-13T18:24:00Z",
-        status: "read",
-        reactions: [{ emoji: "😮", userIds: ["CURRENT_USER"] }, { emoji: "❤️", userIds: ["CURRENT_USER"] }]
-      },
-      {
-        id: "msg-104",
-        senderId: "YM-482913",
-        type: "text",
-        text: "Let me know what you think of the new 3D theme! ✨",
-        timestamp: "2026-09-13T18:25:00Z",
-        status: "delivered",
-        reactions: []
-      }
-    ]
-  },
-  {
-    conversationId: "conv-emma",
-    participants: ["CURRENT_USER", "YM-773104"],
-    createdAt: "2026-09-11T14:00:00Z",
-    unreadCount: 0,
-    messages: [
-      {
-        id: "msg-201",
-        senderId: "YM-773104",
-        type: "text",
-        text: "Hey there! Are we still catching up this evening? ☕",
-        timestamp: "2026-09-13T16:10:00Z",
-        status: "read",
-        reactions: [{ emoji: "👍", userIds: ["CURRENT_USER"] }]
-      },
-      {
-        id: "msg-202",
-        senderId: "CURRENT_USER",
-        type: "text",
-        text: "Yes, definitely! Let's meet at 7 PM.",
-        timestamp: "2026-09-13T16:15:00Z",
-        status: "read",
-        reactions: []
-      },
-      {
-        id: "msg-203",
-        senderId: "YM-773104",
-        type: "text",
-        text: "Perfect! See you soon 🥰",
-        timestamp: "2026-09-13T16:16:00Z",
-        status: "read",
-        reactions: [{ emoji: "❤️", userIds: ["CURRENT_USER"] }]
-      }
-    ]
-  }
-];
+export const INITIAL_DEMO_CONVERSATIONS = [];
 
 export const EMOJI_CATEGORIES = [
   {

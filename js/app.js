@@ -134,32 +134,57 @@ class App {
 
   openConversation(convId) {
     this.switchView('chats');
+    const chatScreen = document.getElementById('chat-screen');
+    const welcomePlaceholder = document.getElementById('chat-welcome-placeholder');
+    if (chatScreen) chatScreen.style.display = 'flex';
+    if (welcomePlaceholder) welcomePlaceholder.style.display = 'none';
+
     this.chatListView.setActive(convId);
     this.chatView.openConversation(convId);
   }
 
   switchView(viewName) {
+    this.previousView = this.currentView;
     this.currentView = viewName;
+
+    const dashboard = document.getElementById('app-dashboard');
+    if (dashboard) {
+      dashboard.setAttribute('data-current-view', viewName);
+    }
 
     // Hide all subviews
     document.querySelectorAll('.subview-container').forEach(el => el.classList.remove('active'));
 
-    // Nav button states
+    // Nav button states (both sidebar nav and mobile bottom nav)
     document.querySelectorAll('.nav-tab-btn, .mobile-nav-item').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.view === viewName);
     });
 
+    // Notification bell buttons
+    document.querySelectorAll('.notif-bell-btn').forEach(btn => {
+      btn.classList.toggle('active', viewName === 'notifications');
+    });
+
     const chatScreen = document.getElementById('chat-screen');
+    const welcomePlaceholder = document.getElementById('chat-welcome-placeholder');
     const sidebarList = document.getElementById('sidebar-conversations-list');
     const sidebarSearch = document.querySelector('.sidebar-search-box');
 
     if (viewName === 'chats') {
-      if (chatScreen) chatScreen.style.display = 'flex';
+      if (this.chatView && this.chatView.currentConvId) {
+        if (chatScreen) chatScreen.style.display = 'flex';
+        if (welcomePlaceholder) welcomePlaceholder.style.display = 'none';
+      } else {
+        if (chatScreen) chatScreen.style.display = 'none';
+        if (welcomePlaceholder) welcomePlaceholder.style.display = 'flex';
+      }
+
       if (sidebarList) sidebarList.style.display = 'flex';
       if (sidebarSearch) sidebarSearch.style.display = 'block';
       this.chatListView.render();
     } else {
       if (chatScreen) chatScreen.style.display = 'none';
+      if (welcomePlaceholder) welcomePlaceholder.style.display = 'none';
 
       const targetSubview = document.getElementById(`${viewName}-view`);
       if (targetSubview) targetSubview.classList.add('active');
@@ -182,12 +207,19 @@ class App {
       b.textContent = incomingReqs.length;
       b.style.display = incomingReqs.length > 0 ? 'inline-flex' : 'none';
     });
+
+    const unreadNotifs = notificationService.getUnreadCount();
+    document.querySelectorAll('.notif-badge').forEach(b => {
+      b.textContent = unreadNotifs;
+      b.style.display = unreadNotifs > 0 ? 'inline-flex' : 'none';
+    });
   }
 
   _bindGlobalEvents() {
-    // Navigation Tabs (Sidebar & Mobile Nav)
+    // Navigation Tabs (Sidebar, Mobile Nav, Notification Bell)
     document.querySelectorAll('[data-view]').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
         this.switchView(btn.dataset.view);
       });
     });
@@ -200,6 +232,37 @@ class App {
       });
     }
 
+    // Delegated click handler for dynamically created buttons & back buttons
+    document.addEventListener('click', (e) => {
+      // Mobile subview back button
+      const backBtn = e.target.closest('.mobile-subview-back-btn');
+      if (backBtn) {
+        e.preventDefault();
+        this.switchView('chats');
+        return;
+      }
+
+      // Find friends buttons
+      const findFriendsBtn = e.target.closest('#btn-empty-find-friends, #btn-welcome-find-friends');
+      if (findFriendsBtn) {
+        e.preventDefault();
+        this.switchView('friends');
+        if (this.friendsView) {
+          this.friendsView.currentSubTab = 'search';
+          this.friendsView.render();
+        }
+        return;
+      }
+
+      // Welcome profile button
+      const welcomeProfileBtn = e.target.closest('#btn-welcome-profile');
+      if (welcomeProfileBtn) {
+        e.preventDefault();
+        this.switchView('profile');
+        return;
+      }
+    });
+
     // Global Notification listener
     window.addEventListener('ym:notification_added', () => {
       this._updateBadges();
@@ -207,6 +270,13 @@ class App {
 
     window.addEventListener('ym:notifications_updated', () => {
       this._updateBadges();
+    });
+
+    window.addEventListener('ym:friends_updated', () => {
+      this._updateBadges();
+      if (this.currentView === 'friends' && this.friendsView) {
+        this.friendsView.render();
+      }
     });
   }
 

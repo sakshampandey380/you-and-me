@@ -40,7 +40,10 @@ export class ChatListView {
         <div class="empty-state">
           <div class="empty-state-icon">✨</div>
           <div class="empty-state-title">No Chats Yet</div>
-          <div class="empty-state-text">Your conversations are waiting. Connect with friends to start chatting!</div>
+          <div class="empty-state-text">Your conversations will appear here. Find friends to start chatting in 3D!</div>
+          <button class="btn-3d btn-primary" id="btn-empty-find-friends" style="margin-top: 10px; font-size: 13px; padding: 8px 18px;">
+            Find Friends
+          </button>
         </div>
       `;
       return;

@@ -4,8 +4,8 @@
     name: "You & Me",
     tagline: "Connect. Chat. Share. Together.",
     creatorSignature: "Made by Sakcham \u2764\uFE0F",
-    version: "1.0.0",
-    storagePrefix: "ym_3d_",
+    version: "2.0.0",
+    storagePrefix: "ym_3d_v2_",
     uniqueIdPrefix: "YM-",
     defaultAvatar: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%238a3ffc'/><stop offset='100%' stop-color='%23ff3366'/></linearGradient></defs><circle cx='50' cy='50' r='50' fill='url(%23g)'/><circle cx='50' cy='38' r='18' fill='%23ffffff' opacity='0.9'/><path d='M20,84 C20,64 35,58 50,58 C65,58 80,64 80,84 Z' fill='%23ffffff' opacity='0.9'/></svg>"
   };
@@ -76,88 +76,6 @@
       createdAt: "2026-03-01T16:45:00Z"
     }
   ];
-  var INITIAL_DEMO_CONVERSATIONS = [
-    {
-      conversationId: "conv-alex",
-      participants: ["CURRENT_USER", "YM-482913"],
-      createdAt: "2026-09-10T10:00:00Z",
-      unreadCount: 1,
-      messages: [
-        {
-          id: "msg-101",
-          senderId: "YM-482913",
-          type: "text",
-          text: "Hey! Welcome to You & Me \u{1F680} The 3D atmosphere here feels unbelievable!",
-          timestamp: "2026-09-13T18:20:00Z",
-          status: "read",
-          reactions: [{ emoji: "\u2764\uFE0F", userIds: ["CURRENT_USER"] }]
-        },
-        {
-          id: "msg-102",
-          senderId: "CURRENT_USER",
-          type: "text",
-          text: "I love the floating particles and depth! How are you doing today?",
-          timestamp: "2026-09-13T18:22:00Z",
-          status: "read",
-          reactions: [{ emoji: "\u{1F525}", userIds: ["YM-482913"] }]
-        },
-        {
-          id: "msg-103",
-          senderId: "YM-482913",
-          type: "image",
-          mediaUrl: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
-          caption: "Check out the starry night view from the hill tonight! \u{1F30C}",
-          timestamp: "2026-09-13T18:24:00Z",
-          status: "read",
-          reactions: [{ emoji: "\u{1F62E}", userIds: ["CURRENT_USER"] }, { emoji: "\u2764\uFE0F", userIds: ["CURRENT_USER"] }]
-        },
-        {
-          id: "msg-104",
-          senderId: "YM-482913",
-          type: "text",
-          text: "Let me know what you think of the new 3D theme! \u2728",
-          timestamp: "2026-09-13T18:25:00Z",
-          status: "delivered",
-          reactions: []
-        }
-      ]
-    },
-    {
-      conversationId: "conv-emma",
-      participants: ["CURRENT_USER", "YM-773104"],
-      createdAt: "2026-09-11T14:00:00Z",
-      unreadCount: 0,
-      messages: [
-        {
-          id: "msg-201",
-          senderId: "YM-773104",
-          type: "text",
-          text: "Hey there! Are we still catching up this evening? \u2615",
-          timestamp: "2026-09-13T16:10:00Z",
-          status: "read",
-          reactions: [{ emoji: "\u{1F44D}", userIds: ["CURRENT_USER"] }]
-        },
-        {
-          id: "msg-202",
-          senderId: "CURRENT_USER",
-          type: "text",
-          text: "Yes, definitely! Let's meet at 7 PM.",
-          timestamp: "2026-09-13T16:15:00Z",
-          status: "read",
-          reactions: []
-        },
-        {
-          id: "msg-203",
-          senderId: "YM-773104",
-          type: "text",
-          text: "Perfect! See you soon \u{1F970}",
-          timestamp: "2026-09-13T16:16:00Z",
-          status: "read",
-          reactions: [{ emoji: "\u2764\uFE0F", userIds: ["CURRENT_USER"] }]
-        }
-      ]
-    }
-  ];
   var EMOJI_CATEGORIES = [
     {
       name: "Love & Romance",
@@ -185,41 +103,18 @@
       this.init();
     }
     init() {
+      this._migrateLegacyStorage();
       if (!this.get("users")) {
         this.set("users", INITIAL_DEMO_USERS);
       }
       if (!this.get("friendships")) {
-        this.set("friendships", [
-          { id: "f-1", user1: "CURRENT_USER", user2: "YM-482913", status: "accepted", createdAt: "2026-09-01T10:00:00Z" },
-          { id: "f-2", user1: "CURRENT_USER", user2: "YM-773104", status: "accepted", createdAt: "2026-09-05T12:00:00Z" },
-          { id: "f-3", user1: "YM-519280", user2: "CURRENT_USER", status: "pending", createdAt: "2026-09-13T14:30:00Z" }
-          // Incoming request from Arjun!
-        ]);
+        this.set("friendships", []);
       }
       if (!this.get("conversations")) {
-        this.set("conversations", INITIAL_DEMO_CONVERSATIONS);
+        this.set("conversations", []);
       }
       if (!this.get("notifications")) {
-        this.set("notifications", [
-          {
-            id: "notif-1",
-            type: "friend_request",
-            title: "New Friend Request",
-            message: "Arjun Sharma sent you a friend request.",
-            fromUserId: "YM-519280",
-            timestamp: "2026-09-13T14:30:00Z",
-            read: false
-          },
-          {
-            id: "notif-2",
-            type: "reaction",
-            title: "New Reaction",
-            message: "Emma reacted with \u2764\uFE0F to your message.",
-            fromUserId: "YM-773104",
-            timestamp: "2026-09-13T16:16:00Z",
-            read: true
-          }
-        ]);
+        this.set("notifications", []);
       }
       if (!this.get("settings")) {
         this.set("settings", {
@@ -230,6 +125,16 @@
           privacyLastSeen: true,
           privacyOnline: true
         });
+      }
+    }
+    _migrateLegacyStorage() {
+      try {
+        if (typeof localStorage !== "undefined") {
+          ["ym_3d_conversations", "ym_3d_friendships", "ym_3d_notifications"].forEach((k) => {
+            localStorage.removeItem(k);
+          });
+        }
+      } catch (e) {
       }
     }
     get(key) {
@@ -748,7 +653,7 @@
       window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
     }
   };
-  var notificationService = new NotificationService();
+  var notificationService2 = new NotificationService();
 
   // js/services/realtime.js
   var RealtimeService = class {
@@ -842,7 +747,7 @@
           } else {
             conv.unreadCount = (conv.unreadCount || 0) + 1;
             chatService._saveConversations(chatService._getConversations());
-            notificationService.addNotification({
+            notificationService2.addNotification({
               type: "message",
               title: partner.name,
               message: replyText,
@@ -1439,21 +1344,21 @@
     }
     _drawFireflies() {
       this.ctx.save();
-      for (let f2 of this.fireflies) {
-        f2.x += f2.speedX + Math.sin(this.time * 2 + f2.y) * 0.4;
-        f2.y += f2.speedY + Math.cos(this.time * 2 + f2.x) * 0.4;
-        if (f2.x < 0) f2.x = this.width;
-        if (f2.x > this.width) f2.x = 0;
-        if (f2.y < this.height * 0.3) f2.y = this.height * 0.85;
-        if (f2.y > this.height * 0.9) f2.y = this.height * 0.4;
-        const alpha = (Math.sin(this.time * 4 + f2.x) * 0.4 + 0.6) * f2.alpha;
-        const glow = this.ctx.createRadialGradient(f2.x, f2.y, 0, f2.x, f2.y, f2.radius * 4);
+      for (let f of this.fireflies) {
+        f.x += f.speedX + Math.sin(this.time * 2 + f.y) * 0.4;
+        f.y += f.speedY + Math.cos(this.time * 2 + f.x) * 0.4;
+        if (f.x < 0) f.x = this.width;
+        if (f.x > this.width) f.x = 0;
+        if (f.y < this.height * 0.3) f.y = this.height * 0.85;
+        if (f.y > this.height * 0.9) f.y = this.height * 0.4;
+        const alpha = (Math.sin(this.time * 4 + f.x) * 0.4 + 0.6) * f.alpha;
+        const glow = this.ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, f.radius * 4);
         glow.addColorStop(0, `rgba(255, 230, 150, ${alpha})`);
         glow.addColorStop(0.5, `rgba(255, 105, 180, ${alpha * 0.4})`);
         glow.addColorStop(1, "transparent");
         this.ctx.fillStyle = glow;
         this.ctx.beginPath();
-        this.ctx.arc(f2.x, f2.y, f2.radius * 4, 0, Math.PI * 2);
+        this.ctx.arc(f.x, f.y, f.radius * 4, 0, Math.PI * 2);
         this.ctx.fill();
       }
       this.ctx.restore();
@@ -1669,7 +1574,10 @@
         <div class="empty-state">
           <div class="empty-state-icon">\u2728</div>
           <div class="empty-state-title">No Chats Yet</div>
-          <div class="empty-state-text">Your conversations are waiting. Connect with friends to start chatting!</div>
+          <div class="empty-state-text">Your conversations will appear here. Find friends to start chatting in 3D!</div>
+          <button class="btn-3d btn-primary" id="btn-empty-find-friends" style="margin-top: 10px; font-size: 13px; padding: 8px 18px;">
+            Find Friends
+          </button>
         </div>
       `;
         return;
@@ -2045,6 +1953,12 @@
       document.querySelector(".app-sidebar")?.classList.remove("chat-open");
       document.querySelector(".app-main-view")?.classList.remove("chat-open");
       document.querySelector(".app-dashboard")?.classList.remove("in-chat");
+      const chatScreen = document.getElementById("chat-screen");
+      const welcomePlaceholder = document.getElementById("chat-welcome-placeholder");
+      if (chatScreen) chatScreen.style.display = "none";
+      if (welcomePlaceholder && window.ymApp && window.ymApp.currentView === "chats") {
+        welcomePlaceholder.style.display = "flex";
+      }
     }
     renderMessages(searchQuery = "") {
       if (!this.messagesContainer || !this.currentConvId) return;
@@ -2328,6 +2242,9 @@
     _bindEvents() {
       document.getElementById("chat-back-btn")?.addEventListener("click", () => {
         this.closeConversation();
+        if (window.ymApp) {
+          window.ymApp.switchView("chats");
+        }
       });
       document.getElementById("cancel-reply-btn")?.addEventListener("click", () => {
         this.cancelReply();
@@ -2474,12 +2391,12 @@
       if (current.userId === targetUserId) return "self";
       const list = this._getFriendships();
       const match = list.find(
-        (f2) => this._resolveId(f2.user1) === current.userId && this._resolveId(f2.user2) === targetUserId || this._resolveId(f2.user2) === current.userId && this._resolveId(f2.user1) === targetUserId
+        (f) => this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === targetUserId || this._resolveId(f.user2) === current.userId && this._resolveId(f.user1) === targetUserId
       );
       if (!match) return "none";
       if (match.status === "accepted") return "friends";
       if (match.status === "pending") {
-        return this._resolveId(f.user1) === current.userId ? "request_sent" : "request_received";
+        return this._resolveId(match.user1) === current.userId ? "request_sent" : "request_received";
       }
       return "none";
     }
@@ -2489,7 +2406,7 @@
       if (current.userId === targetUserId) throw new Error("You cannot add yourself as a friend.");
       const list = this._getFriendships();
       const existing = list.find(
-        (f2) => this._resolveId(f2.user1) === current.userId && this._resolveId(f2.user2) === targetUserId || this._resolveId(f2.user2) === current.userId && this._resolveId(f2.user1) === targetUserId
+        (f) => this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === targetUserId || this._resolveId(f.user2) === current.userId && this._resolveId(f.user1) === targetUserId
       );
       if (existing) {
         if (existing.status === "accepted") throw new Error("You are already friends.");
@@ -2510,7 +2427,7 @@
       const current = auth.getCurrentUser();
       if (!current) throw new Error("Please log in first.");
       const list = this._getFriendships();
-      const request = list.find((f2) => f2.id === requestId);
+      const request = list.find((f) => f.id === requestId);
       if (!request) throw new Error("Friend request not found.");
       request.status = "accepted";
       request.acceptedAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -2519,7 +2436,7 @@
     }
     rejectFriendRequest(requestId) {
       const list = this._getFriendships();
-      const filtered = list.filter((f2) => f2.id !== requestId);
+      const filtered = list.filter((f) => f.id !== requestId);
       this._saveFriendships(filtered);
       return true;
     }
@@ -2527,8 +2444,8 @@
       const current = auth.getCurrentUser();
       if (!current) return false;
       const list = this._getFriendships();
-      const filtered = list.filter((f2) => {
-        const match = this._resolveId(f2.user1) === current.userId && this._resolveId(f2.user2) === targetUserId && f2.status === "pending";
+      const filtered = list.filter((f) => {
+        const match = this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === targetUserId && f.status === "pending";
         return !match;
       });
       this._saveFriendships(filtered);
@@ -2538,8 +2455,8 @@
       const current = auth.getCurrentUser();
       if (!current) return false;
       const list = this._getFriendships();
-      const filtered = list.filter((f2) => {
-        const isMatch = this._resolveId(f2.user1) === current.userId && this._resolveId(f2.user2) === friendUserId || this._resolveId(f2.user2) === current.userId && this._resolveId(f2.user1) === friendUserId;
+      const filtered = list.filter((f) => {
+        const isMatch = this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === friendUserId || this._resolveId(f.user2) === current.userId && this._resolveId(f.user1) === friendUserId;
         return !isMatch;
       });
       this._saveFriendships(filtered);
@@ -2550,10 +2467,10 @@
       if (!current) return [];
       const list = this._getFriendships();
       const friendIds = [];
-      list.forEach((f2) => {
-        if (f2.status === "accepted") {
-          const u1 = this._resolveId(f2.user1);
-          const u2 = this._resolveId(f2.user2);
+      list.forEach((f) => {
+        if (f.status === "accepted") {
+          const u1 = this._resolveId(f.user1);
+          const u2 = this._resolveId(f.user2);
           if (u1 === current.userId) friendIds.push(u2);
           else if (u2 === current.userId) friendIds.push(u1);
         }
@@ -2564,20 +2481,20 @@
       const current = auth.getCurrentUser();
       if (!current) return [];
       const list = this._getFriendships();
-      return list.filter((f2) => f2.status === "pending" && this._resolveId(f2.user2) === current.userId).map((f2) => ({
-        requestId: f2.id,
-        sender: userService.getUserById(this._resolveId(f2.user1)),
-        createdAt: f2.createdAt
+      return list.filter((f) => f.status === "pending" && this._resolveId(f.user2) === current.userId).map((f) => ({
+        requestId: f.id,
+        sender: userService.getUserById(this._resolveId(f.user1)),
+        createdAt: f.createdAt
       })).filter((item) => item.sender !== null);
     }
     getSentRequests() {
       const current = auth.getCurrentUser();
       if (!current) return [];
       const list = this._getFriendships();
-      return list.filter((f2) => f2.status === "pending" && this._resolveId(f2.user1) === current.userId).map((f2) => ({
-        requestId: f2.id,
-        recipient: userService.getUserById(this._resolveId(f2.user2)),
-        createdAt: f2.createdAt
+      return list.filter((f) => f.status === "pending" && this._resolveId(f.user1) === current.userId).map((f) => ({
+        requestId: f.id,
+        recipient: userService.getUserById(this._resolveId(f.user2)),
+        createdAt: f.createdAt
       })).filter((item) => item.recipient !== null);
     }
   };
@@ -2627,8 +2544,15 @@
           <div class="empty-state-icon">\u{1F465}</div>
           <div class="empty-state-title">Build Your Circle</div>
           <div class="empty-state-text">Search for users and connect with friends to start chatting!</div>
+          <button class="btn-3d btn-primary btn-goto-find-friends" style="margin-top: 10px; font-size: 13px; padding: 8px 18px;">
+            Find Friends
+          </button>
         </div>
       `;
+        listContainer.querySelector(".btn-goto-find-friends")?.addEventListener("click", () => {
+          this.currentSubTab = "search";
+          this.render();
+        });
         return;
       }
       listContainer.innerHTML = `
@@ -2755,6 +2679,7 @@
         btn.addEventListener("click", () => {
           friendService.acceptFriendRequest(btn.dataset.reqId);
           toast.success("Friend request accepted! \u2728");
+          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
           this.render();
         });
       });
@@ -2762,6 +2687,7 @@
         btn.addEventListener("click", () => {
           friendService.rejectFriendRequest(btn.dataset.reqId);
           toast.info("Request declined.");
+          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
           this.render();
         });
       });
@@ -2769,6 +2695,7 @@
         btn.addEventListener("click", () => {
           friendService.cancelSentRequest(btn.dataset.userId);
           toast.info("Request canceled.");
+          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
           this.render();
         });
       });
@@ -2834,8 +2761,11 @@
         resultsContainer.querySelectorAll(".btn-add-user").forEach((btn) => {
           btn.addEventListener("click", () => {
             try {
+              const targetUser = userService.getUserById(btn.dataset.userId);
               friendService.sendFriendRequest(btn.dataset.userId);
-              toast.success("Friend request sent! \u{1F48C}");
+              const targetDisplay = targetUser ? `${targetUser.name} (${targetUser.userId})` : btn.dataset.userId;
+              toast.success(`Friend request sent to ${targetDisplay}! \u{1F48C}`);
+              window.dispatchEvent(new CustomEvent("ym:friends_updated"));
               doSearch(searchInput.value);
             } catch (err) {
               toast.error(err.message);
@@ -2846,6 +2776,7 @@
           btn.addEventListener("click", () => {
             friendService.cancelSentRequest(btn.dataset.userId);
             toast.info("Request canceled.");
+            window.dispatchEvent(new CustomEvent("ym:friends_updated"));
             doSearch(searchInput.value);
           });
         });
@@ -2868,6 +2799,16 @@
       const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString(void 0, { month: "long", year: "numeric" }) : "Recently";
       this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px;">
+        <div class="subview-top-bar">
+          <button class="btn-icon mobile-subview-back-btn" data-view="chats" title="Back to Chats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h2 class="subview-header-title">My Profile</h2>
+          <button class="btn-icon notif-bell-btn" data-view="notifications" title="Notifications" style="position: relative;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span class="badge-count notif-badge" style="position: absolute; top: -2px; right: -2px; display: none;">0</span>
+          </button>
+        </div>
         <div class="glass-panel-elevated card-3d" style="padding: 32px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;">
           <div class="avatar-wrap avatar-lg" style="margin-bottom: 4px;">
             <img src="${user.profilePicture}" class="avatar-img" alt="${user.name}" id="profile-display-avatar" />
@@ -3004,7 +2945,16 @@
       const isDark = settings.theme !== "light";
       this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px;">
-        <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">Settings</h2>
+        <div class="subview-top-bar">
+          <button class="btn-icon mobile-subview-back-btn" data-view="chats" title="Back to Chats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h2 class="subview-header-title">Settings</h2>
+          <button class="btn-icon notif-bell-btn" data-view="notifications" title="Notifications" style="position: relative;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span class="badge-count notif-badge" style="position: absolute; top: -2px; right: -2px; display: none;">0</span>
+          </button>
+        </div>
 
         <!-- Appearance Section -->
         <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
@@ -3170,13 +3120,16 @@
     }
     render() {
       if (!this.container) return;
-      const notifs = notificationService.getNotifications();
+      const notifs = notificationService2.getNotifications();
       this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 16px;">
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-          <h2 style="font-size: 22px; font-weight: 800;">Notifications</h2>
+        <div class="subview-top-bar">
+          <button class="btn-icon mobile-subview-back-btn" data-view="chats" title="Back to Chats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h2 class="subview-header-title">Notifications</h2>
           <div style="display: flex; gap: 8px;">
-            <button class="btn-3d btn-glass" id="btn-mark-all-notifs-read" style="padding: 6px 12px; font-size: 12px;">Mark All Read</button>
+            <button class="btn-3d btn-glass" id="btn-mark-all-notifs-read" style="padding: 6px 12px; font-size: 12px;">Mark Read</button>
             <button class="btn-3d btn-glass" id="btn-clear-all-notifs" style="padding: 6px 12px; font-size: 12px; color: var(--color-danger);">Clear</button>
           </div>
         </div>
@@ -3221,12 +3174,12 @@
     }
     _bindEvents() {
       document.getElementById("btn-mark-all-notifs-read")?.addEventListener("click", () => {
-        notificationService.markAllAsRead();
+        notificationService2.markAllAsRead();
         toast.success("All marked as read.");
         this.render();
       });
       document.getElementById("btn-clear-all-notifs")?.addEventListener("click", () => {
-        notificationService.clearAll();
+        notificationService2.clearAll();
         toast.info("Notifications cleared.");
         this.render();
       });
@@ -3329,25 +3282,45 @@
     }
     openConversation(convId) {
       this.switchView("chats");
+      const chatScreen = document.getElementById("chat-screen");
+      const welcomePlaceholder = document.getElementById("chat-welcome-placeholder");
+      if (chatScreen) chatScreen.style.display = "flex";
+      if (welcomePlaceholder) welcomePlaceholder.style.display = "none";
       this.chatListView.setActive(convId);
       this.chatView.openConversation(convId);
     }
     switchView(viewName) {
+      this.previousView = this.currentView;
       this.currentView = viewName;
+      const dashboard = document.getElementById("app-dashboard");
+      if (dashboard) {
+        dashboard.setAttribute("data-current-view", viewName);
+      }
       document.querySelectorAll(".subview-container").forEach((el) => el.classList.remove("active"));
       document.querySelectorAll(".nav-tab-btn, .mobile-nav-item").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.view === viewName);
       });
+      document.querySelectorAll(".notif-bell-btn").forEach((btn) => {
+        btn.classList.toggle("active", viewName === "notifications");
+      });
       const chatScreen = document.getElementById("chat-screen");
+      const welcomePlaceholder = document.getElementById("chat-welcome-placeholder");
       const sidebarList = document.getElementById("sidebar-conversations-list");
       const sidebarSearch = document.querySelector(".sidebar-search-box");
       if (viewName === "chats") {
-        if (chatScreen) chatScreen.style.display = "flex";
+        if (this.chatView && this.chatView.currentConvId) {
+          if (chatScreen) chatScreen.style.display = "flex";
+          if (welcomePlaceholder) welcomePlaceholder.style.display = "none";
+        } else {
+          if (chatScreen) chatScreen.style.display = "none";
+          if (welcomePlaceholder) welcomePlaceholder.style.display = "flex";
+        }
         if (sidebarList) sidebarList.style.display = "flex";
         if (sidebarSearch) sidebarSearch.style.display = "block";
         this.chatListView.render();
       } else {
         if (chatScreen) chatScreen.style.display = "none";
+        if (welcomePlaceholder) welcomePlaceholder.style.display = "none";
         const targetSubview = document.getElementById(`${viewName}-view`);
         if (targetSubview) targetSubview.classList.add("active");
         if (viewName === "friends") this.friendsView.render();
@@ -3364,10 +3337,16 @@
         b.textContent = incomingReqs.length;
         b.style.display = incomingReqs.length > 0 ? "inline-flex" : "none";
       });
+      const unreadNotifs = notificationService.getUnreadCount();
+      document.querySelectorAll(".notif-badge").forEach((b) => {
+        b.textContent = unreadNotifs;
+        b.style.display = unreadNotifs > 0 ? "inline-flex" : "none";
+      });
     }
     _bindGlobalEvents() {
       document.querySelectorAll("[data-view]").forEach((btn) => {
-        btn.addEventListener("click", () => {
+        btn.addEventListener("click", (e) => {
+          e.preventDefault();
           this.switchView(btn.dataset.view);
         });
       });
@@ -3377,11 +3356,41 @@
           this.chatListView.render(e.target.value);
         });
       }
+      document.addEventListener("click", (e) => {
+        const backBtn = e.target.closest(".mobile-subview-back-btn");
+        if (backBtn) {
+          e.preventDefault();
+          this.switchView("chats");
+          return;
+        }
+        const findFriendsBtn = e.target.closest("#btn-empty-find-friends, #btn-welcome-find-friends");
+        if (findFriendsBtn) {
+          e.preventDefault();
+          this.switchView("friends");
+          if (this.friendsView) {
+            this.friendsView.currentSubTab = "search";
+            this.friendsView.render();
+          }
+          return;
+        }
+        const welcomeProfileBtn = e.target.closest("#btn-welcome-profile");
+        if (welcomeProfileBtn) {
+          e.preventDefault();
+          this.switchView("profile");
+          return;
+        }
+      });
       window.addEventListener("ym:notification_added", () => {
         this._updateBadges();
       });
       window.addEventListener("ym:notifications_updated", () => {
         this._updateBadges();
+      });
+      window.addEventListener("ym:friends_updated", () => {
+        this._updateBadges();
+        if (this.currentView === "friends" && this.friendsView) {
+          this.friendsView.render();
+        }
       });
     }
     _bindRealtimeEvents() {

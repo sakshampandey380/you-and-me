@@ -23,7 +23,16 @@ export class SettingsView {
 
     this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px;">
-        <h2 style="font-size: 22px; font-weight: 800; margin-bottom: 4px;">Settings</h2>
+        <div class="subview-top-bar">
+          <button class="btn-icon mobile-subview-back-btn" data-view="chats" title="Back to Chats">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+          </button>
+          <h2 class="subview-header-title">Settings</h2>
+          <button class="btn-icon notif-bell-btn" data-view="notifications" title="Notifications" style="position: relative;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            <span class="badge-count notif-badge" style="position: absolute; top: -2px; right: -2px; display: none;">0</span>
+          </button>
+        </div>
 
         <!-- Appearance Section -->
         <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">

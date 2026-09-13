@@ -13,47 +13,26 @@ class StorageService {
   }
 
   init() {
+    this._migrateLegacyStorage();
+
     // Seed users if empty
     if (!this.get('users')) {
       this.set('users', INITIAL_DEMO_USERS);
     }
 
-    // Seed friendships (current user initially has Alex and Emma as friends)
+    // Seed friendships (empty clean state)
     if (!this.get('friendships')) {
-      this.set('friendships', [
-        { id: "f-1", user1: "CURRENT_USER", user2: "YM-482913", status: "accepted", createdAt: "2026-09-01T10:00:00Z" },
-        { id: "f-2", user1: "CURRENT_USER", user2: "YM-773104", status: "accepted", createdAt: "2026-09-05T12:00:00Z" },
-        { id: "f-3", user1: "YM-519280", user2: "CURRENT_USER", status: "pending", createdAt: "2026-09-13T14:30:00Z" } // Incoming request from Arjun!
-      ]);
+      this.set('friendships', []);
     }
 
-    // Seed conversations if empty
+    // Seed conversations if empty (empty clean state)
     if (!this.get('conversations')) {
-      this.set('conversations', INITIAL_DEMO_CONVERSATIONS);
+      this.set('conversations', []);
     }
 
-    // Seed notifications if empty
+    // Seed notifications if empty (empty clean state)
     if (!this.get('notifications')) {
-      this.set('notifications', [
-        {
-          id: "notif-1",
-          type: "friend_request",
-          title: "New Friend Request",
-          message: "Arjun Sharma sent you a friend request.",
-          fromUserId: "YM-519280",
-          timestamp: "2026-09-13T14:30:00Z",
-          read: false
-        },
-        {
-          id: "notif-2",
-          type: "reaction",
-          title: "New Reaction",
-          message: "Emma reacted with ❤️ to your message.",
-          fromUserId: "YM-773104",
-          timestamp: "2026-09-13T16:16:00Z",
-          read: true
-        }
-      ]);
+      this.set('notifications', []);
     }
 
     // Seed settings if empty
@@ -66,6 +45,18 @@ class StorageService {
         privacyLastSeen: true,
         privacyOnline: true
       });
+    }
+  }
+
+  _migrateLegacyStorage() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        ['ym_3d_conversations', 'ym_3d_friendships', 'ym_3d_notifications'].forEach(k => {
+          localStorage.removeItem(k);
+        });
+      }
+    } catch (e) {
+      // Ignore
     }
   }
 
