@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="You & Me — Premium Mobile-First 3D Chat Application. Connect. Chat. Share. Together." />
+  <meta name="theme-color" content="#090a16" />
+  <title>You & Me — 3D Chat Application</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/background3d.css" />
+  <link rel="stylesheet" href="css/components.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/chat.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <!-- ==========================================================================
+       3D BACKGROUND CANVAS LAYERS & SPATIAL LIGHTING
+       ========================================================================== -->
+  <div class="background-container">
+    <canvas id="bg-canvas"></canvas>
+    <canvas id="romantic-canvas"></canvas>
+    <div class="spatial-glow spatial-glow-1"></div>
+    <div class="spatial-glow spatial-glow-2"></div>
+    <div class="spatial-glow spatial-glow-3"></div>
+    <div class="spatial-grid"></div>
+  </div>
+
+  <div id="app-root">
+
+    <!-- ==========================================================================
+         3D LOADING SCREEN
+         ========================================================================== -->
+    <div id="loading-screen" style="position: fixed; inset: 0; background: var(--bg-space); z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease-out;">
+      <div style="position: relative; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center;">
+        <div style="position: absolute; inset: -10px; border-radius: 50%; border: 2px dashed rgba(255, 51, 102, 0.4); animation: rotate3DOrb 8s infinite linear;"></div>
+        <div class="auth-logo-emblem" style="width: 72px; height: 72px; margin: 0; box-shadow: 0 0 35px var(--color-romantic-glow);">
+          <svg viewBox="0 0 24 24">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+          </svg>
+        </div>
+      </div>
+      <div style="margin-top: 24px; text-align: center;">
+        <h1 style="font-size: 26px; font-weight: 800; letter-spacing: -0.02em; background: linear-gradient(135deg, #fff 40%, var(--color-romantic-rose) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">You & Me</h1>
+        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px; letter-spacing: 0.05em;">Connect. Chat. Share. Together.</p>
+      </div>
+      <div style="margin-top: 36px; display: flex; gap: 8px;">
+        <div class="typing-dot" style="width: 8px; height: 8px;"></div>
+        <div class="typing-dot" style="width: 8px; height: 8px; animation-delay: 0.2s;"></div>
+        <div class="typing-dot" style="width: 8px; height: 8px; animation-delay: 0.4s;"></div>
+      </div>
+      <!-- Fallback timeout to guarantee loading screen always dissolves smoothly -->
+      <script>
+        setTimeout(function() {
+          var ls = document.getElementById('loading-screen');
+          if (ls && ls.style.display !== 'none' && !window.ymApp) {
+            ls.style.opacity = '0';
+            setTimeout(function() { ls.style.display = 'none'; }, 500);
+            var authSc = document.getElementById('auth-screen');
+            if (authSc) authSc.style.display = 'flex';
+          }
+        }, 2500);
+      </script>
+    </div>
+
+    <!-- ==========================================================================
+         AUTHENTICATION SCREEN (3D Romantic Scene with Couple on Bench)
+         ========================================================================== -->
+    <div id="auth-screen" class="auth-view-wrapper" style="display: none;">
+      <div class="auth-layout-container">
+        
+        <!-- Branding Header -->
+        <div class="auth-brand">
+          <div class="auth-logo-emblem">
+            <svg viewBox="0 0 24 24">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+          </div>
+          <h1 class="auth-title">You & Me</h1>
+          <p class="auth-tagline">Connect. Chat. Share. Together.</p>
+        </div>
+
+        <!-- 3D Glass Auth Card -->
+        <div class="auth-card-3d card-3d">
+          <!-- Mode Tabs -->
+          <div class="auth-tabs">
+            <button class="auth-tab-btn active" id="tab-login">Log In</button>
+            <button class="auth-tab-btn" id="tab-signup">Create Account</button>
+          </div>
+
+          <!-- LOGIN FORM -->
+          <form id="form-login" class="auth-form">
+            <div class="input-group">
+              <label class="input-label" for="login-identifier">Username, Email or ID</label>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <input type="text" id="login-identifier" placeholder="e.g. alex or alex@youandme.app" required autocomplete="username" />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <div class="input-label">
+                <span>Password</span>
+                <a href="#" id="btn-forgot-password" style="font-size: 12px;">Forgot?</a>
+              </div>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
+                <button type="button" class="password-toggle-btn" title="Toggle password visibility">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="auth-aux-row">
+              <label class="remember-label">
+                <input type="checkbox" id="login-remember" checked />
+                <span>Remember me</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn-3d btn-primary auth-submit-btn">
+              <span>Log In to You & Me</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </button>
+
+            <div style="font-size: 12px; text-align: center; color: var(--text-muted); margin-top: 6px;">
+              Quick demo: Log in as <strong>alex</strong> (password: <strong>password123</strong>)
+            </div>
+          </form>
+
+          <!-- SIGN UP FORM -->
+          <form id="form-signup" class="auth-form" style="display: none;">
+            <!-- Avatar Selection -->
+            <div class="avatar-selection-row">
+              <label for="signup-avatar-input" class="avatar-preview-box" title="Click to choose profile picture">
+                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%238a3ffc'/><stop offset='100%' stop-color='%23ff3366'/></linearGradient></defs><circle cx='50' cy='50' r='50' fill='url(%23g)'/><circle cx='50' cy='38' r='18' fill='%23ffffff' opacity='0.9'/><path d='M20,84 C20,64 35,58 50,58 C65,58 80,64 80,84 Z' fill='%23ffffff' opacity='0.9'/></svg>" id="signup-avatar-preview" alt="Avatar preview" />
+              </label>
+              <div class="avatar-upload-label">
+                <label for="signup-avatar-input" class="avatar-upload-title">Choose Profile Picture</label>
+                <span class="avatar-upload-sub">Click avatar to upload (optional)</span>
+              </div>
+              <input type="file" id="signup-avatar-input" accept="image/*" style="display: none;" />
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="signup-name">Full Name</label>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <input type="text" id="signup-name" placeholder="e.g. Saksham" required />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="signup-username">Username</label>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>
+                <input type="text" id="signup-username" placeholder="e.g. saksham" required autocomplete="username" />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="signup-email">Email Address</label>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                <input type="email" id="signup-email" placeholder="saksham@example.com" required autocomplete="email" />
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="signup-password">Password</label>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <input type="password" id="signup-password" placeholder="At least 6 characters" required autocomplete="new-password" />
+                <button type="button" class="password-toggle-btn" title="Toggle password visibility">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="signup-confirm-password">Confirm Password</label>
+              <div class="input-with-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                <input type="password" id="signup-confirm-password" placeholder="Repeat your password" required autocomplete="new-password" />
+              </div>
+            </div>
+
+            <button type="submit" class="btn-3d btn-primary auth-submit-btn">
+              <span>Create Account & Get ID</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </button>
+          </form>
+        </div>
+
+        <!-- Creator Signature on Auth Page -->
+        <div class="auth-signature-wrap">
+          <div class="creator-signature">
+            <span>Made by Sakcham</span>
+            <span class="heart-icon">❤️</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         MAIN DASHBOARD (Sidebar, Active Chat, Subviews & Mobile Nav)
+         ========================================================================== -->
+    <div id="app-dashboard" class="app-dashboard" style="display: none;">
+
+      <!-- SIDEBAR -->
+      <aside class="app-sidebar">
+        <!-- Sidebar Header & Brand -->
+        <div class="sidebar-header">
+          <div class="brand-wrap">
+            <div class="brand-emblem-sm">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+              </svg>
+            </div>
+            <div class="brand-text-sm">
+              <span class="brand-name-sm">You & Me</span>
+              <span class="brand-tagline-sm">3D Messaging</span>
+            </div>
+          </div>
+          <button class="btn-icon" data-view="notifications" title="Notifications">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          </button>
+        </div>
+
+        <!-- Greeting Banner -->
+        <div class="greeting-banner" id="greeting-text">
+          Good day, <span class="greeting-highlight">Friend</span> 👋
+        </div>
+
+        <!-- Navigation Tabs in Desktop Sidebar -->
+        <div class="sidebar-nav-tabs">
+          <button class="nav-tab-btn active" data-view="chats">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            Chats
+          </button>
+          <button class="nav-tab-btn" data-view="friends">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            Friends
+            <span class="badge-count friends-badge" style="display: none;">0</span>
+          </button>
+          <button class="nav-tab-btn" data-view="profile">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Profile
+          </button>
+          <button class="nav-tab-btn" data-view="settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            Settings
+          </button>
+        </div>
+
+        <!-- Sidebar Search -->
+        <div class="sidebar-search-box">
+          <div class="input-with-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="sidebar-search-input" placeholder="Search conversations..." />
+          </div>
+        </div>
+
+        <!-- Conversations List -->
+        <div class="sidebar-content-list" id="sidebar-conversations-list">
+          <!-- Dynamic conversation items -->
+        </div>
+
+        <!-- Creator Signature in Sidebar / Desktop Footer -->
+        <div class="desktop-footer">
+          <div class="creator-signature">
+            <span>Made by Sakcham</span>
+            <span class="heart-icon">❤️</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN CONTENT VIEW AREA -->
+      <main class="app-main-view">
+
+        <!-- ACTIVE CHAT SCREEN -->
+        <section id="chat-screen" class="chat-container">
+          <!-- Chat Header -->
+          <div class="chat-header">
+            <div style="display: flex; align-items: center;">
+              <!-- Mobile Back Button -->
+              <button class="btn-icon mobile-back-btn" id="chat-back-btn" title="Back to Chats">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
+              <div class="chat-header-user">
+                <div class="avatar-wrap">
+                  <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%238a3ffc'/></svg>" id="chat-header-avatar" class="avatar-img avatar-sm" alt="" />
+                </div>
+                <div class="chat-header-info">
+                  <div class="chat-header-name" id="chat-header-name">Conversation</div>
+                  <div class="chat-header-status" id="chat-header-status">Offline</div>
+                </div>
+              </div>
+            </div>
+            <div class="chat-header-actions">
+              <button class="btn-icon" id="chat-call-btn" title="Start Call">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+              </button>
+              <button class="btn-icon" id="chat-search-toggle-btn" title="Search in chat">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- In-Chat Search Bar -->
+          <div class="chat-search-bar" id="chat-search-bar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="chat-search-input" class="chat-search-input" placeholder="Search messages in this chat..." />
+            <button class="btn-icon" id="chat-search-close-btn" style="width: 32px; height: 32px;">&times;</button>
+          </div>
+
+          <!-- Messages Stream -->
+          <div class="chat-messages" id="chat-messages">
+            <!-- Messages inserted dynamically -->
+          </div>
+
+          <!-- Typing Indicator Row inside Conversation -->
+          <div class="typing-indicator-row" id="chat-typing-row" style="display: none; margin: 0 20px 12px 20px;">
+            <span id="typing-user-label" style="font-weight: 600; color: var(--color-romantic-rose);">Alex is typing</span>
+            <div class="typing-dots">
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          </div>
+
+          <!-- Quoted Reply Preview Bar -->
+          <div class="reply-preview-bar" id="reply-preview-bar">
+            <div class="reply-preview-content">
+              <span class="reply-preview-title" id="reply-preview-sender">Replying to Alex</span>
+              <span class="reply-preview-text" id="reply-preview-text">Original message...</span>
+            </div>
+            <button class="btn-icon" id="cancel-reply-btn" style="width: 30px; height: 30px; border-radius: 50%;">&times;</button>
+          </div>
+
+          <!-- 3D Floating Composer -->
+          <div class="chat-composer-wrap">
+            <div class="composer-inner">
+              <button type="button" class="btn-icon emoji-toggle-btn" id="composer-emoji-btn" title="Add Emoji" style="border: none; background: transparent; box-shadow: none;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+              </button>
+
+              <button type="button" class="btn-icon" id="composer-attach-btn" title="Attach Media or File" style="border: none; background: transparent; box-shadow: none;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </button>
+
+              <textarea id="composer-textarea" class="composer-textarea" rows="1" placeholder="Type a message..."></textarea>
+
+              <div class="composer-actions">
+                <button type="button" class="composer-send-btn" id="composer-send-btn" title="Send Message">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SUBVIEWS: FRIENDS & REQUESTS -->
+        <section id="friends-view" class="subview-container">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h2 style="font-size: 22px; font-weight: 800;">Friends & Circle</h2>
+            <div class="auth-tabs" style="margin: 0; padding: 3px;">
+              <button class="auth-tab-btn friends-subtab-btn active" data-subtab="my-friends">My Friends</button>
+              <button class="auth-tab-btn friends-subtab-btn" data-subtab="requests">
+                Requests <span class="badge-count" id="requests-badge-count" style="display: none; margin-left: 4px;">0</span>
+              </button>
+              <button class="auth-tab-btn friends-subtab-btn" data-subtab="search">Find Friends</button>
+            </div>
+          </div>
+          <div id="friends-subview-content"></div>
+        </section>
+
+        <!-- SUBVIEWS: PROFILE -->
+        <section id="profile-view" class="subview-container"></section>
+
+        <!-- SUBVIEWS: SETTINGS -->
+        <section id="settings-view" class="subview-container"></section>
+
+        <!-- SUBVIEWS: NOTIFICATIONS -->
+        <section id="notifications-view" class="subview-container"></section>
+
+      </main>
+
+      <!-- MOBILE BOTTOM NAVIGATION -->
+      <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-item active" data-view="chats">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          <span>Chats</span>
+        </button>
+        <button class="mobile-nav-item" data-view="friends">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          <span>Friends</span>
+          <span class="badge-count friends-badge" style="position: absolute; top: 2px; right: 14px; display: none;">0</span>
+        </button>
+        <button class="mobile-nav-item" data-view="profile">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          <span>Profile</span>
+        </button>
+        <button class="mobile-nav-item" data-view="settings">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Settings</span>
+        </button>
+      </nav>
+
+    </div>
+
+    <!-- Hidden global file input for chat composer attachments -->
+    <input type="file" id="chat-file-input" style="display: none;" />
+
+    <!-- Container for dynamic toasts -->
+    <div class="toast-container"></div>
+
+  </div>
+
+  <!-- Main JavaScript Application Bundle (Loads with zero CORS restrictions on file:// and Vercel) -->
+  <script src="js/bundle.js"></script>
+</body>
+</html>

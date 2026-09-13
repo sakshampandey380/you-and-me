@@ -1,0 +1,120 @@
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   Design Tokens & CSS Variables (Dark 3D & Light 3D Themes)
+   "Connect. Chat. Share. Together." | Made by Sakcham ❤️
+   ========================================================================== */
+
+:root {
+  /* Typography */
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Brand Accents */
+  --color-primary: #8a3ffc;
+  --color-primary-light: #a56eff;
+  --color-primary-glow: rgba(138, 63, 252, 0.45);
+  
+  --color-romantic-pink: #ff3366;
+  --color-romantic-rose: #ff6584;
+  --color-romantic-glow: rgba(255, 51, 102, 0.45);
+
+  --color-cyan-accent: #00e5ff;
+  --color-cyan-glow: rgba(0, 229, 255, 0.4);
+
+  --color-success: #00e676;
+  --color-warning: #ffab00;
+  --color-danger: #ff3b30;
+  --color-online: #00e676;
+
+  /* 3D Global Settings (Controlled by Settings view) */
+  --perspective: 1200px;
+  --depth-intensity: 1;
+  --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-bounce: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-fast: all 0.15s ease-out;
+
+  /* Default / Dark 3D Theme */
+  --bg-space: #090a16;
+  --bg-gradient: radial-gradient(circle at 50% 20%, #151138 0%, #0a0b18 50%, #05060d 100%);
+  --bg-canvas-tint: rgba(10, 11, 25, 0.85);
+
+  --glass-surface-1: rgba(22, 24, 48, 0.65);
+  --glass-surface-2: rgba(29, 32, 64, 0.75);
+  --glass-surface-3: rgba(41, 46, 92, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-highlight: rgba(255, 255, 255, 0.25);
+  --glass-blur: blur(20px);
+  --glass-blur-subtle: blur(12px);
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --text-inverse: #090a16;
+
+  /* 3D Shadows & Layer Elevations */
+  --shadow-layer-1: 0 4px 16px -2px rgba(0, 0, 0, 0.4), 0 2px 6px -1px rgba(0, 0, 0, 0.2);
+  --shadow-layer-2: 0 12px 32px -4px rgba(0, 0, 0, 0.55), 0 4px 12px -2px rgba(0, 0, 0, 0.3);
+  --shadow-layer-3: 0 24px 56px -6px rgba(0, 0, 0, 0.7), 0 8px 24px -3px rgba(0, 0, 0, 0.4);
+  --shadow-card-3d: 0 18px 45px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(255, 255, 255, 0.08) inset;
+  --shadow-glow-pink: 0 0 28px rgba(255, 51, 102, 0.45);
+  --shadow-glow-purple: 0 0 28px rgba(138, 63, 252, 0.45);
+
+  /* Message Bubbles - 3D Dark */
+  --bubble-outgoing-bg: linear-gradient(135deg, #7c2de6 0%, #ff3366 100%);
+  --bubble-outgoing-text: #ffffff;
+  --bubble-outgoing-shadow: 0 8px 22px rgba(138, 63, 252, 0.35), 0 1px 2px rgba(255, 255, 255, 0.3) inset;
+  --bubble-outgoing-border: rgba(255, 255, 255, 0.2);
+
+  --bubble-incoming-bg: rgba(30, 33, 62, 0.85);
+  --bubble-incoming-text: #ffffff;
+  --bubble-incoming-shadow: 0 8px 20px rgba(0, 0, 0, 0.4), 0 1px 1px rgba(255, 255, 255, 0.12) inset;
+  --bubble-incoming-border: rgba(255, 255, 255, 0.1);
+
+  --input-bg: rgba(18, 20, 42, 0.8);
+  --input-border: rgba(255, 255, 255, 0.14);
+  --input-border-focus: #ff3366;
+
+  /* Layout dimensions */
+  --sidebar-width: 360px;
+  --header-height: 72px;
+  --composer-height: 76px;
+  --mobile-nav-height: 64px;
+}
+
+/* Light 3D Theme */
+[data-theme="light"] {
+  --bg-space: #f2f5fb;
+  --bg-gradient: radial-gradient(circle at 50% 20%, #ffffff 0%, #edf1fa 60%, #e1e7f5 100%);
+  --bg-canvas-tint: rgba(245, 248, 255, 0.7);
+
+  --glass-surface-1: rgba(255, 255, 255, 0.75);
+  --glass-surface-2: rgba(255, 255, 255, 0.88);
+  --glass-surface-3: rgba(255, 255, 255, 0.95);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-border-highlight: rgba(255, 255, 255, 0.8);
+
+  --text-primary: #121426;
+  --text-secondary: rgba(18, 20, 38, 0.75);
+  --text-muted: rgba(18, 20, 38, 0.48);
+  --text-inverse: #ffffff;
+
+  --shadow-layer-1: 0 4px 16px -2px rgba(20, 24, 60, 0.08), 0 2px 6px -1px rgba(20, 24, 60, 0.04);
+  --shadow-layer-2: 0 12px 30px -4px rgba(20, 24, 60, 0.12), 0 4px 12px -2px rgba(20, 24, 60, 0.06);
+  --shadow-layer-3: 0 24px 50px -6px rgba(20, 24, 60, 0.18), 0 8px 20px -3px rgba(20, 24, 60, 0.08);
+  --shadow-card-3d: 0 18px 40px rgba(20, 24, 60, 0.12), 0 2px 4px rgba(255, 255, 255, 0.8) inset;
+
+  --bubble-outgoing-bg: linear-gradient(135deg, #7026e3 0%, #ff3366 100%);
+  --bubble-outgoing-text: #ffffff;
+  --bubble-outgoing-shadow: 0 8px 20px rgba(112, 38, 227, 0.28), 0 1px 2px rgba(255, 255, 255, 0.4) inset;
+  --bubble-outgoing-border: rgba(255, 255, 255, 0.35);
+
+  --bubble-incoming-bg: rgba(255, 255, 255, 0.92);
+  --bubble-incoming-text: #121426;
+  --bubble-incoming-shadow: 0 6px 18px rgba(20, 24, 60, 0.08), 0 1px 2px rgba(255, 255, 255, 0.9) inset;
+  --bubble-incoming-border: rgba(0, 0, 0, 0.06);
+
+  --input-bg: rgba(255, 255, 255, 0.9);
+  --input-border: rgba(0, 0, 0, 0.12);
+  --input-border-focus: #ff3366;
+}

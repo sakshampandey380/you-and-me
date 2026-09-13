@@ -1,0 +1,162 @@
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Animations, Keyframes & Micro-Interactions
+   ========================================================================== */
+
+/* Heart Pulse for Signature and Romantic accents */
+@keyframes heartGlowPulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 6px rgba(255, 51, 102, 0.6));
+  }
+  50% {
+    transform: scale(1.16);
+    filter: drop-shadow(0 0 16px rgba(255, 51, 102, 0.95)) drop-shadow(0 0 24px rgba(255, 101, 132, 0.8));
+  }
+}
+
+/* Subtle floating 3D animation */
+@keyframes float3D {
+  0%, 100% {
+    transform: translateY(0px) translateZ(10px) rotateX(0deg);
+  }
+  50% {
+    transform: translateY(-8px) translateZ(25px) rotateX(3deg);
+  }
+}
+
+/* 3D Orb continuous rotation */
+@keyframes rotate3DOrb {
+  0% {
+    transform: rotateX(15deg) rotateY(0deg) rotateZ(0deg);
+  }
+  50% {
+    transform: rotateX(25deg) rotateY(180deg) rotateZ(10deg);
+  }
+  100% {
+    transform: rotateX(15deg) rotateY(360deg) rotateZ(0deg);
+  }
+}
+
+/* Subtle soft wave shimmer */
+@keyframes ambientWave {
+  0% {
+    opacity: 0.35;
+    transform: scale(0.98) translateZ(0);
+  }
+  50% {
+    opacity: 0.65;
+    transform: scale(1.04) translateZ(20px);
+  }
+  100% {
+    opacity: 0.35;
+    transform: scale(0.98) translateZ(0);
+  }
+}
+
+/* Message Bubble Entrance — gentle 3D elevation and settle */
+@keyframes messageEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96) translateZ(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) translateZ(0);
+  }
+}
+
+/* Typing indicator dots bounce */
+@keyframes typingDot {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* 3D Toast Entrance */
+@keyframes toastSlideIn3D {
+  0% {
+    opacity: 0;
+    transform: perspective(600px) translateY(-30px) rotateX(-20deg) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(600px) translateY(0) rotateX(0deg) scale(1);
+  }
+}
+
+/* Modal 3D Perspective Pop */
+@keyframes modalPop3D {
+  0% {
+    opacity: 0;
+    transform: perspective(800px) scale(0.85) rotateX(15deg) translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(800px) scale(1) rotateX(0deg) translateY(0);
+  }
+}
+
+/* Reaction emoji bounce pop */
+@keyframes reactionPop {
+  0% {
+    transform: scale(0.4) rotate(-15deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.25) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+/* Street lamp flicker / romantic soft breathing glow */
+@keyframes lampGlowBreath {
+  0%, 100% {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 35px rgba(255, 215, 110, 0.75));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 55px rgba(255, 230, 150, 0.95));
+  }
+}
+
+/* Star twinkle */
+@keyframes starTwinkle {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* Apply animation helper classes */
+.anim-heart-pulse {
+  display: inline-block;
+  animation: heartGlowPulse 2.4s infinite ease-in-out;
+  transform-origin: center;
+}
+
+.anim-float-3d {
+  animation: float3D 6s infinite ease-in-out;
+}
+
+.anim-message-enter {
+  animation: messageEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.anim-reaction-pop {
+  animation: reactionPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}

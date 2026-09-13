@@ -1,0 +1,102 @@
+/* ==========================================================================
+   YOU & ME — 3D Chat Application
+   3D Background System & Canvas Overlays
+   ========================================================================== */
+
+.background-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: var(--bg-gradient);
+}
+
+/* Master 3D Canvas */
+#bg-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 1;
+}
+
+/* Romantic Scene Canvas (Active on Auth screen) */
+#romantic-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 2;
+  transition: opacity 0.8s ease-in-out;
+  opacity: 1;
+}
+
+#romantic-canvas.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Ambient 3D Spatial Glow Orbs */
+.spatial-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.45;
+  transition: var(--transition-smooth);
+}
+
+.spatial-glow-1 {
+  width: 45vw;
+  height: 45vw;
+  max-width: 600px;
+  max-height: 600px;
+  top: -10%;
+  left: -10%;
+  background: radial-gradient(circle, var(--color-primary-glow) 0%, transparent 70%);
+  animation: ambientWave 12s infinite alternate ease-in-out;
+}
+
+.spatial-glow-2 {
+  width: 50vw;
+  height: 50vw;
+  max-width: 700px;
+  max-height: 700px;
+  bottom: -15%;
+  right: -10%;
+  background: radial-gradient(circle, var(--color-romantic-glow) 0%, transparent 70%);
+  animation: ambientWave 15s infinite alternate-reverse ease-in-out;
+}
+
+.spatial-glow-3 {
+  width: 35vw;
+  height: 35vw;
+  max-width: 500px;
+  max-height: 500px;
+  top: 40%;
+  left: 30%;
+  background: radial-gradient(circle, var(--color-cyan-glow) 0%, transparent 70%);
+  opacity: 0.2;
+}
+
+/* Depth Grid Overlay (Subtle 3D plane) */
+.spatial-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 1) 30%, transparent 80%);
+  z-index: 1;
+  opacity: 0.6;
+}
