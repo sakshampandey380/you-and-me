@@ -6,7 +6,18 @@
     "build": "node build.js",
     "start": "npx serve ."
   },
-  "keywords": ["chat", "3d", "messaging", "glassmorphism", "html5", "css3", "javascript"],
+  "keywords": [
+    "chat",
+    "3d",
+    "messaging",
+    "glassmorphism",
+    "html5",
+    "css3",
+    "javascript"
+  ],
   "author": "Sakcham",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
 }
