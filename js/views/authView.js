@@ -24,12 +24,22 @@ export class AuthView {
   show() {
     const authScreen = document.getElementById('auth-screen');
     if (authScreen) authScreen.style.display = 'flex';
+    const romanticCanvas = document.getElementById('romantic-canvas');
+    if (romanticCanvas) {
+      romanticCanvas.classList.remove('hidden');
+      romanticCanvas.style.display = 'block';
+    }
     if (this.scene) this.scene.start();
   }
 
   hide() {
     const authScreen = document.getElementById('auth-screen');
     if (authScreen) authScreen.style.display = 'none';
+    const romanticCanvas = document.getElementById('romantic-canvas');
+    if (romanticCanvas) {
+      romanticCanvas.classList.add('hidden');
+      romanticCanvas.style.display = 'none';
+    }
     if (this.scene) this.scene.stop();
   }
 
@@ -49,7 +59,7 @@ export class AuthView {
       tabSignup.addEventListener('click', () => this.switchTab('signup'));
     }
 
-    // Avatar Upload Preview
+    // Avatar Upload Preview with Automatic Thumbnail Compression
     if (avatarInput) {
       avatarInput.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -60,9 +70,38 @@ export class AuthView {
           }
           const reader = new FileReader();
           reader.onload = (evt) => {
-            this.uploadedAvatarData = evt.target.result;
-            const previewImg = document.getElementById('signup-avatar-preview');
-            if (previewImg) previewImg.src = this.uploadedAvatarData;
+            const rawData = evt.target.result;
+            // Compress image to 128x128 thumbnail so it never exceeds localStorage quota
+            const img = new Image();
+            img.onload = () => {
+              try {
+                const canvas = document.createElement('canvas');
+                const maxDim = 128;
+                let w = img.width;
+                let h = img.height;
+                if (w > h) {
+                  if (w > maxDim) {
+                    h = Math.round((h * maxDim) / w);
+                    w = maxDim;
+                  }
+                } else {
+                  if (h > maxDim) {
+                    w = Math.round((w * maxDim) / h);
+                    h = maxDim;
+                  }
+                }
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                this.uploadedAvatarData = canvas.toDataURL('image/jpeg', 0.82);
+              } catch (canvasErr) {
+                this.uploadedAvatarData = rawData;
+              }
+              const previewImg = document.getElementById('signup-avatar-preview');
+              if (previewImg) previewImg.src = this.uploadedAvatarData;
+            };
+            img.src = rawData;
           };
           reader.readAsDataURL(file);
         }
@@ -102,6 +141,9 @@ export class AuthView {
         const password = document.getElementById('signup-password').value;
         const confirmPassword = document.getElementById('signup-confirm-password').value;
 
+        const dobInput = document.getElementById('signup-dob');
+        const dob = dobInput ? dobInput.value : '';
+
         if (!name || !username || !email || !password) {
           toast.error("Please fill in all required fields.");
           return;
@@ -123,9 +165,10 @@ export class AuthView {
             username,
             email,
             password,
+            dob,
             profilePicture: this.uploadedAvatarData
           });
-          toast.success(`Account created! Your ID is ${user.userId} 🎉`);
+          toast.success(`Account created! Your ID is ${user.uid || user.userId} 🎉`);
           this.onAuthSuccess(user);
         } catch (err) {
           toast.error(err.message);
@@ -137,7 +180,7 @@ export class AuthView {
     if (forgotPassBtn) {
       forgotPassBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        toast.info("Demo Account Tip: You can log in with username 'alex' and password 'password123', or create a new account!");
+        toast.info("Log in with your registered username, email, or User ID, or click Create Account to sign up!");
       });
     }
 

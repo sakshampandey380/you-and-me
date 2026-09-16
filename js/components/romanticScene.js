@@ -81,20 +81,26 @@ export class RomanticScene {
     }
   }
 
-  _generateHeart(randomY = false) {
-    const depth = Math.random() * 0.8 + 0.4; // 3D depth multiplier
+  _generateHeart(randomY = true) {
+    const depth = Math.random() * 0.7 + 0.5; // 3D depth multiplier
+    const w = this.width || window.innerWidth;
+    const h = this.height || window.innerHeight;
     return {
-      x: Math.random() * this.width,
-      y: randomY ? Math.random() * this.height : this.height + 20 + Math.random() * 50,
-      size: (Math.random() * 14 + 10) * depth,
-      speedY: (Math.random() * 1.2 + 0.6) * depth,
-      speedX: (Math.sin(Math.random() * Math.PI) - 0.5) * 0.5,
-      rotation: Math.random() * Math.PI * 2,
-      rotSpeed: (Math.random() - 0.5) * 0.02,
+      baseX: Math.random() * w,
+      baseY: Math.random() * (h * 0.85),
+      size: (Math.random() * 12 + 10) * depth,
+      radiusX: Math.random() * 32 + 16,
+      radiusY: Math.random() * 28 + 14,
+      speedX: Math.random() * 0.012 + 0.006,
+      speedY: Math.random() * 0.014 + 0.007,
+      speedRot: Math.random() * 0.016 + 0.008,
+      pulseSpeed: Math.random() * 0.035 + 0.02,
+      phaseX: Math.random() * Math.PI * 2,
+      phaseY: Math.random() * Math.PI * 2,
+      phaseRot: Math.random() * Math.PI * 2,
       depth: depth,
-      alpha: Math.random() * 0.6 + 0.4,
-      hue: Math.random() > 0.3 ? 340 + Math.random() * 25 : 270 + Math.random() * 20, // Pink to purple
-      wobbleOffset: Math.random() * Math.PI * 2
+      alpha: Math.random() * 0.35 + 0.45,
+      hue: Math.random() > 0.35 ? 335 + Math.random() * 25 : 275 + Math.random() * 25
     };
   }
 
@@ -410,19 +416,24 @@ export class RomanticScene {
 
   _draw3DHearts() {
     for (let h of this.hearts) {
-      h.y -= h.speedY;
-      h.x += Math.sin(this.time + h.wobbleOffset) * 0.8;
-      h.rotation += h.rotSpeed;
+      // Omnidirectional in-place drifting across all directions
+      const currentX = h.baseX 
+        + Math.sin(this.time * h.speedX + h.phaseX) * h.radiusX 
+        + Math.cos(this.time * (h.speedX * 0.5) + h.phaseY) * (h.radiusX * 0.4);
+      const currentY = h.baseY 
+        + Math.cos(this.time * h.speedY + h.phaseY) * h.radiusY 
+        + Math.sin(this.time * (h.speedY * 0.6) + h.phaseX) * (h.radiusY * 0.35);
 
       // Parallax with 3D depth
-      const px = h.x + this.mouseX * h.depth;
-      const py = h.y + this.mouseY * h.depth;
+      const px = currentX + this.mouseX * h.depth;
+      const py = currentY + this.mouseY * h.depth;
 
-      this._drawSingleHeart(px, py, h.size, h.rotation, h.alpha * h.depth, h.hue);
+      // Heartbeat pulsing & scale
+      const pulse = 1 + Math.sin(this.time * h.pulseSpeed + h.phaseX) * 0.16;
+      const r = h.size * pulse;
+      const rot = Math.sin(this.time * h.speedRot + h.phaseRot) * 0.28;
 
-      if (h.y < -50) {
-        Object.assign(h, this._generateHeart(false));
-      }
+      this._drawSingleHeart(px, py, r, rot, h.alpha * h.depth, h.hue);
     }
   }
 
@@ -431,25 +442,41 @@ export class RomanticScene {
     this.ctx.translate(x, y);
     this.ctx.rotate(rotation);
 
-    // 3D Soft Glow
-    this.ctx.shadowColor = `hsla(${hue}, 100%, 65%, ${alpha})`;
-    this.ctx.shadowBlur = size * 0.8;
+    // 1. Radiant Outer Halo Glow
+    const halo = this.ctx.createRadialGradient(0, 0, size * 0.2, 0, 0, size * 2.6);
+    halo.addColorStop(0, `hsla(${hue}, 100%, 70%, ${alpha * 0.6})`);
+    halo.addColorStop(0.5, `hsla(${hue}, 100%, 60%, ${alpha * 0.2})`);
+    halo.addColorStop(1, 'transparent');
+    this.ctx.fillStyle = halo;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, size * 2.6, 0, Math.PI * 2);
+    this.ctx.fill();
 
-    this.ctx.fillStyle = `hsla(${hue}, 100%, 68%, ${alpha})`;
+    // 2. High-intensity Shadow Glow
+    this.ctx.shadowColor = `hsla(${hue}, 100%, 72%, ${alpha})`;
+    this.ctx.shadowBlur = size * 1.8;
+
+    // 3. Heart Body Gradient Fill
+    const grad = this.ctx.createLinearGradient(0, -size, 0, size);
+    grad.addColorStop(0, `hsla(${hue}, 100%, 82%, ${alpha})`);
+    grad.addColorStop(0.5, `hsla(${hue}, 100%, 66%, ${alpha * 0.95})`);
+    grad.addColorStop(1, `hsla(${hue}, 95%, 48%, ${alpha * 0.9})`);
+    this.ctx.fillStyle = grad;
 
     // Parametric Heart Shape
     this.ctx.beginPath();
-    const d = size * 0.6;
+    const d = size * 0.65;
     this.ctx.moveTo(0, -d * 0.4);
-    this.ctx.bezierCurveTo(-d * 0.8, -d * 1.2, -d * 1.6, -d * 0.2, 0, d * 1.2);
+    this.ctx.bezierCurveTo(-d * 0.8, -d * 1.2, -d * 1.6, -d * 0.2, 0, d * 1.25);
     this.ctx.bezierCurveTo(d * 1.6, -d * 0.2, d * 0.8, -d * 1.2, 0, -d * 0.4);
     this.ctx.closePath();
     this.ctx.fill();
 
-    // Subtle 3D Inner Highlight
-    this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.35})`;
+    // 4. Glossy 3D Highlight on Top Left Lobe
+    this.ctx.shadowBlur = 0;
+    this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
     this.ctx.beginPath();
-    this.ctx.arc(-d * 0.4, -d * 0.5, d * 0.25, 0, Math.PI * 2);
+    this.ctx.arc(-d * 0.42, -d * 0.52, d * 0.26, 0, Math.PI * 2);
     this.ctx.fill();
 
     this.ctx.restore();

@@ -1,7 +1,7 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
    Master Application Controller & Router
-   "Connect. Chat. Share. Together." | Made by Sakcham ❤️
+   "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 import { auth } from './services/auth.js';
@@ -16,6 +16,8 @@ import { ProfileView } from './views/profileView.js';
 import { SettingsView } from './views/settingsView.js';
 import { NotificationsView } from './views/notificationsView.js';
 import { friendService } from './services/friend.js';
+import { notificationService } from './services/notification.js';
+import { SearchSuggestions } from './components/searchSuggestions.js';
 
 class App {
   constructor() {
@@ -28,6 +30,7 @@ class App {
     this.profileView = null;
     this.settingsView = null;
     this.notificationsView = null;
+    this.searchSuggestions = null;
 
     this.init();
   }
@@ -46,6 +49,21 @@ class App {
     this.profileView = new ProfileView();
     this.settingsView = new SettingsView(() => this._handleLogout());
     this.notificationsView = new NotificationsView((convId) => this.openConversation(convId));
+
+    // Initialize Real-Time Search Suggestions
+    this.searchSuggestions = new SearchSuggestions({
+      inputId: 'sidebar-search-input',
+      containerId: 'sidebar-search-suggestions',
+      onOpenConversation: (convId) => this.openConversation(convId),
+      onOpenProfileView: () => this.switchView('profile'),
+      onOpenFriendsView: (subtab, query = '') => {
+        this.switchView('friends');
+        if (this.friendsView) {
+          this.friendsView.currentSubTab = subtab;
+          this.friendsView.render(query);
+        }
+      }
+    });
 
     this._bindGlobalEvents();
     this._bindRealtimeEvents();
@@ -133,6 +151,9 @@ class App {
   }
 
   openConversation(convId) {
+    if (this.searchSuggestions) {
+      this.searchSuggestions.close();
+    }
     this.switchView('chats');
     const chatScreen = document.getElementById('chat-screen');
     const welcomePlaceholder = document.getElementById('chat-welcome-placeholder');
@@ -144,6 +165,16 @@ class App {
   }
 
   switchView(viewName) {
+    if (!viewName) return;
+
+    try {
+      if (this.searchSuggestions) {
+        this.searchSuggestions.close();
+      }
+    } catch (e) {
+      console.warn('Search suggestions close safe guard:', e);
+    }
+
     this.previousView = this.currentView;
     this.currentView = viewName;
 
@@ -181,7 +212,9 @@ class App {
 
       if (sidebarList) sidebarList.style.display = 'flex';
       if (sidebarSearch) sidebarSearch.style.display = 'block';
-      this.chatListView.render();
+      if (this.chatListView) {
+        try { this.chatListView.render(); } catch (e) { console.error('chatListView render failed:', e); }
+      }
     } else {
       if (chatScreen) chatScreen.style.display = 'none';
       if (welcomePlaceholder) welcomePlaceholder.style.display = 'none';
@@ -189,13 +222,19 @@ class App {
       const targetSubview = document.getElementById(`${viewName}-view`);
       if (targetSubview) targetSubview.classList.add('active');
 
-      if (viewName === 'friends') this.friendsView.render();
-      else if (viewName === 'profile') this.profileView.render();
-      else if (viewName === 'settings') this.settingsView.render();
-      else if (viewName === 'notifications') this.notificationsView.render();
+      try {
+        if (viewName === 'friends' && this.friendsView) this.friendsView.render();
+        else if (viewName === 'profile' && this.profileView) this.profileView.render();
+        else if (viewName === 'settings' && this.settingsView) this.settingsView.render();
+        else if (viewName === 'notifications' && this.notificationsView) this.notificationsView.render();
+      } catch (renderErr) {
+        console.error(`Error rendering subview ${viewName}:`, renderErr);
+      }
 
       // On mobile, if active chat was open, return to view
-      this.chatView.closeConversation();
+      if (this.chatView) {
+        this.chatView.closeConversation();
+      }
     }
 
     this._updateBadges();
@@ -224,26 +263,58 @@ class App {
       });
     });
 
-    // Sidebar search filter
+    // Sidebar search filter and clear button
     const searchInput = document.getElementById('sidebar-search-input');
+    const clearBtn = document.getElementById('sidebar-search-clear-btn');
+
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
-        this.chatListView.render(e.target.value);
+        const val = e.target.value;
+        if (clearBtn) {
+          clearBtn.style.display = val ? 'flex' : 'none';
+        }
+        this.chatListView.render(val);
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        if (searchInput) {
+          searchInput.value = '';
+          clearBtn.style.display = 'none';
+          this.chatListView.render('');
+          if (this.searchSuggestions) {
+            this.searchSuggestions.search('');
+          }
+          searchInput.focus();
+        }
       });
     }
 
     // Delegated click handler for dynamically created buttons & back buttons
     document.addEventListener('click', (e) => {
-      // Mobile subview back button
-      const backBtn = e.target.closest('.mobile-subview-back-btn');
-      if (backBtn) {
-        e.preventDefault();
-        this.switchView('chats');
-        return;
+      // Any [data-view] button click delegation (tabs, back buttons, bell)
+      const viewBtn = e.target.closest('[data-view]');
+      if (viewBtn) {
+        const view = viewBtn.dataset.view;
+        if (view && (viewBtn.classList.contains('nav-tab-btn') ||
+                     viewBtn.classList.contains('mobile-nav-item') ||
+                     viewBtn.classList.contains('notif-bell-btn') ||
+                     viewBtn.classList.contains('mobile-subview-back-btn') ||
+                     viewBtn.id === 'btn-welcome-find-friends' ||
+                     viewBtn.id === 'btn-welcome-profile')) {
+          e.preventDefault();
+          this.switchView(view);
+          if (view === 'friends' && viewBtn.id === 'btn-welcome-find-friends' && this.friendsView) {
+            this.friendsView.currentSubTab = 'search';
+            this.friendsView.render();
+          }
+          return;
+        }
       }
 
       // Find friends buttons
-      const findFriendsBtn = e.target.closest('#btn-empty-find-friends, #btn-welcome-find-friends');
+      const findFriendsBtn = e.target.closest('#btn-empty-find-friends');
       if (findFriendsBtn) {
         e.preventDefault();
         this.switchView('friends');
@@ -253,29 +324,37 @@ class App {
         }
         return;
       }
-
-      // Welcome profile button
-      const welcomeProfileBtn = e.target.closest('#btn-welcome-profile');
-      if (welcomeProfileBtn) {
-        e.preventDefault();
-        this.switchView('profile');
-        return;
-      }
     });
 
     // Global Notification listener
     window.addEventListener('ym:notification_added', () => {
       this._updateBadges();
+      if (this.currentView === 'notifications' && this.notificationsView) {
+        this.notificationsView.render();
+      }
     });
 
     window.addEventListener('ym:notifications_updated', () => {
       this._updateBadges();
+      if (this.currentView === 'notifications' && this.notificationsView) {
+        this.notificationsView.render();
+      }
     });
 
     window.addEventListener('ym:friends_updated', () => {
       this._updateBadges();
       if (this.currentView === 'friends' && this.friendsView) {
         this.friendsView.render();
+      }
+      if (this.chatListView) {
+        this.chatListView.render();
+      }
+    });
+
+    window.addEventListener('ym:conversation_unlocked', (e) => {
+      this._updateBadges();
+      if (this.chatListView) {
+        this.chatListView.render();
       }
     });
   }

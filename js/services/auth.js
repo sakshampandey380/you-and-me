@@ -1,6 +1,7 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
-   Authentication Service (Registration, Login, Session & Unique ID Generator)
+   Authentication Service (Registration, Login, Session & Unique UID Generation)
+   "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 import { APP_CONFIG } from '../config.js';
@@ -13,10 +14,29 @@ class AuthService {
   }
 
   _loadSession() {
-    const session = storage.get('active_session');
-    if (session && session.userId) {
-      const users = storage.get('users') || [];
-      const user = users.find(u => u.userId === session.userId);
+    let sessionUserId = null;
+
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        const temp = sessionStorage.getItem('ym_temp_session');
+        if (temp) {
+          const parsed = JSON.parse(temp);
+          if (parsed && (parsed.uid || parsed.userId)) {
+            sessionUserId = parsed.uid || parsed.userId;
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (!sessionUserId) {
+      const active = storage.get('app_current_user');
+      if (active && (active.uid || active.userId)) {
+        sessionUserId = active.uid || active.userId;
+      }
+    }
+
+    if (sessionUserId) {
+      const user = storage.getUserByUid(sessionUserId);
       if (user) {
         this.currentUser = user;
       }
@@ -24,33 +44,72 @@ class AuthService {
   }
 
   generateUserId() {
-    // Generates format: YM-XXXXXX
-    const randomNum = Math.floor(100000 + Math.random() * 900000);
-    return `${APP_CONFIG.uniqueIdPrefix}${randomNum}`;
+    // Generates format: SK-XXXXXX (guaranteed unique in app_users)
+    const users = storage.getUsers();
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let newId = '';
+    let isUnique = false;
+
+    while (!isUnique) {
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      newId = `${APP_CONFIG.uniqueIdPrefix}${code}`;
+
+      // Verify no existing user has this UID
+      const exists = users.some(u => {
+        if (!u) return false;
+        const existing = String(u.uid || u.userId || '').toUpperCase();
+        return existing === newId.toUpperCase();
+      });
+
+      if (!exists) {
+        isUnique = true;
+      }
+    }
+
+    return newId;
   }
 
-  registerUser({ name, username, email, password, profilePicture }) {
-    const users = storage.get('users') || [];
-    
-    // Normalize & check uniqueness
-    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
-    const cleanEmail = email.trim().toLowerCase();
+  registerUser({ name, username, email, password, dob = '', phone = '', language = 'English', profilePicture }) {
+    const users = storage.getUsers();
 
-    if (users.some(u => u.username.toLowerCase() === cleanUsername)) {
+    const cleanUsername = String(username || '').trim().toLowerCase().replace(/^@+/, '').replace(/[^a-z0-9_]/g, '');
+    const cleanEmail = String(email || '').trim().toLowerCase();
+
+    if (!cleanUsername) {
+      throw new Error("Please enter a valid username.");
+    }
+
+    if (users.some(u => String(u.username || '').toLowerCase() === cleanUsername)) {
       throw new Error("Username is already taken. Please choose another.");
     }
 
-    if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+    if (users.some(u => String(u.email || '').toLowerCase() === cleanEmail)) {
       throw new Error("An account with this email already exists.");
     }
 
+    const trimmedName = String(name || '').trim();
+    const cleanDob = String(dob || '').trim();
+    const cleanPhone = String(phone || '').trim();
+    const uid = this.generateUserId();
+    const avatar = profilePicture || APP_CONFIG.defaultAvatar;
+
     const newUser = {
-      userId: this.generateUserId(),
-      name: name.trim(),
+      uid: uid,
+      userId: uid, // Alias for backward compatibility
+      name: trimmedName,
+      displayName: trimmedName,
       username: cleanUsername,
       email: cleanEmail,
-      password: password, // In production, hashed on server
-      profilePicture: profilePicture || APP_CONFIG.defaultAvatar,
+      phone: cleanPhone,
+      password: password,
+      dob: cleanDob,
+      birthday: cleanDob,
+      avatar: avatar,
+      profilePicture: avatar,
+      language: language || "English",
       bio: "Hey there! I am using You & Me 🚀",
       status: "Available for conversations ✨",
       onlineStatus: "online",
@@ -59,22 +118,46 @@ class AuthService {
     };
 
     users.push(newUser);
-    storage.set('users', users);
+    storage.saveUsers(users);
 
-    // Auto login
+    // Auto login new user
     this._setSession(newUser, true);
+
+    // Broadcast registration across application
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ym:user_registered', { detail: newUser }));
+      window.dispatchEvent(new CustomEvent('ym:friends_updated'));
+      window.dispatchEvent(new CustomEvent('ym:storage_changed', { detail: { key: 'app_users' } }));
+    }
+
     return newUser;
   }
 
   loginUser(identifier, password, rememberMe = true) {
-    const users = storage.get('users') || [];
-    const cleanId = identifier.trim().toLowerCase();
+    const users = storage.getUsers();
+    const raw = String(identifier || '').trim();
+    const cleanLower = raw.toLowerCase();
+    const cleanUser = cleanLower.replace(/^@+/, '');
+    const cleanDigits = cleanLower.replace(/[^0-9]/g, '');
 
-    const user = users.find(u => 
-      u.email.toLowerCase() === cleanId || 
-      u.username.toLowerCase() === cleanId ||
-      u.userId.toLowerCase() === cleanId
-    );
+    const user = users.find(u => {
+      if (!u) return false;
+      const uEmail = String(u.email || '').toLowerCase();
+      const uUser = String(u.username || '').toLowerCase();
+      const uId = String(u.uid || u.userId || '').toLowerCase();
+      const uDigits = uId.replace(/[^0-9]/g, '');
+      const uPhone = String(u.phone || '').toLowerCase();
+
+      return (
+        uEmail === cleanLower ||
+        uUser === cleanUser ||
+        uId === cleanLower ||
+        uId === ('sk-' + cleanLower) ||
+        uId === ('ym-' + cleanLower) ||
+        (cleanDigits.length >= 6 && uDigits === cleanDigits) ||
+        (cleanDigits.length >= 6 && uPhone && uPhone.replace(/[^0-9]/g, '') === cleanDigits)
+      );
+    });
 
     if (!user) {
       throw new Error("No account found with this username, email or ID.");
@@ -86,18 +169,43 @@ class AuthService {
 
     user.onlineStatus = "online";
     user.lastSeen = "Just now";
-    storage.set('users', users);
+    storage.saveUsers(users);
 
     this._setSession(user, rememberMe);
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ym:auth_changed', { detail: user }));
+      window.dispatchEvent(new CustomEvent('ym:friends_updated'));
+    }
+
     return user;
   }
 
-  _setSession(user, remember) {
+  _setSession(user, remember = true) {
     this.currentUser = user;
+    const sessionPayload = {
+      uid: user.uid || user.userId,
+      userId: user.uid || user.userId,
+      token: "ym_auth_" + Date.now()
+    };
+
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('ym_temp_session', JSON.stringify(sessionPayload));
+      }
+    } catch (e) {}
+
     if (remember) {
-      storage.set('active_session', { userId: user.userId, token: "mock_jwt_ym_" + Date.now() });
-    } else {
-      sessionStorage.setItem('ym_temp_session', JSON.stringify({ userId: user.userId }));
+      storage.set('app_current_user', sessionPayload);
+    }
+  }
+
+  setCurrentUser(user) {
+    if (!user) return;
+    this._setSession(user, true);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ym:auth_changed', { detail: user }));
+      window.dispatchEvent(new CustomEvent('ym:friends_updated'));
     }
   }
 
@@ -110,13 +218,20 @@ class AuthService {
 
   updateCurrentUser(updates) {
     if (!this.currentUser) return null;
-    const users = storage.get('users') || [];
-    const index = users.findIndex(u => u.userId === this.currentUser.userId);
-    
+    const users = storage.getUsers();
+    const currentUid = this.currentUser.uid || this.currentUser.userId;
+    const index = users.findIndex(u => (u.uid || u.userId) === currentUid);
+
     if (index !== -1) {
       users[index] = { ...users[index], ...updates };
       this.currentUser = users[index];
-      storage.set('users', users);
+      storage.saveUsers(users);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ym:profile_updated', { detail: this.currentUser }));
+        window.dispatchEvent(new CustomEvent('ym:storage_changed', { detail: { key: 'app_users' } }));
+      }
+
       return this.currentUser;
     }
     return null;
@@ -124,17 +239,27 @@ class AuthService {
 
   logout() {
     if (this.currentUser) {
-      const users = storage.get('users') || [];
-      const user = users.find(u => u.userId === this.currentUser.userId);
+      const users = storage.getUsers();
+      const currentUid = this.currentUser.uid || this.currentUser.userId;
+      const user = users.find(u => (u.uid || u.userId) === currentUid);
       if (user) {
         user.onlineStatus = "offline";
         user.lastSeen = "Just now";
-        storage.set('users', users);
+        storage.saveUsers(users);
       }
     }
+
     this.currentUser = null;
-    storage.remove('active_session');
-    sessionStorage.removeItem('ym_temp_session');
+    storage.remove('app_current_user');
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem('ym_temp_session');
+      }
+    } catch (e) {}
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ym:auth_changed', { detail: null }));
+    }
   }
 
   isAuthenticated() {

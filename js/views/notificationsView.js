@@ -1,9 +1,6 @@
-/* ==========================================================================
-   YOU & ME — 3D Chat Application
-   Notifications View Controller
-   ========================================================================== */
-
 import { notificationService } from '../services/notification.js';
+import { friendService } from '../services/friend.js';
+import { chatService } from '../services/chat.js';
 import { toast } from '../components/toast.js';
 
 export class NotificationsView {
@@ -40,17 +37,39 @@ export class NotificationsView {
           <div style="display: flex; flex-direction: column; gap: 10px;">
             ${notifs.map(n => {
               const timeStr = new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const isFriendReq = n.type === 'friend_request';
+              const isFriendAccepted = n.type === 'friend_accepted';
+
               return `
-                <div class="glass-panel card-3d" style="padding: 14px 18px; display: flex; align-items: center; gap: 14px; border-left: 4px solid ${n.read ? 'transparent' : 'var(--color-romantic-pink)'};">
-                  <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--glass-surface-2); display: flex; align-items: center; justify-content: center; color: var(--color-romantic-rose);">
-                    ${n.type === 'message' ? '💬' : n.type === 'reaction' ? '❤️' : '💌'}
+                <div class="glass-panel card-3d" style="padding: 14px 18px; display: flex; align-items: flex-start; gap: 14px; border-left: 4px solid ${n.read ? 'transparent' : 'var(--color-romantic-pink)'};">
+                  <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--glass-surface-2); display: flex; align-items: center; justify-content: center; color: var(--color-romantic-rose); font-size: 18px; flex-shrink: 0; margin-top: 2px;">
+                    ${n.type === 'message' ? '💬' : n.type === 'reaction' ? '❤️' : isFriendAccepted ? '🎉' : '💌'}
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       <div style="font-weight: 700; font-size: 14px;">${n.title}</div>
                       <div style="font-size: 11px; color: var(--text-muted);">${timeStr}</div>
                     </div>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">${n.message}</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 3px;">${n.message}</div>
+
+                    ${isFriendReq ? `
+                      <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button type="button" class="btn-3d btn-primary btn-notif-accept" data-req-id="${n.requestId || ''}" data-sender-id="${n.fromUserId || ''}" data-notif-id="${n.id}" style="padding: 6px 14px; font-size: 12px;">
+                          Accept Request ✓
+                        </button>
+                        <button type="button" class="btn-3d btn-glass btn-notif-decline" data-req-id="${n.requestId || ''}" data-notif-id="${n.id}" style="padding: 6px 12px; font-size: 12px; color: var(--color-danger);">
+                          Decline
+                        </button>
+                      </div>
+                    ` : ''}
+
+                    ${isFriendAccepted ? `
+                      <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button type="button" class="btn-3d btn-primary btn-notif-chat" data-user-id="${n.fromUserId || ''}" style="padding: 6px 14px; font-size: 12px;">
+                          💬 Open Chat
+                        </button>
+                      </div>
+                    ` : ''}
                   </div>
                 </div>
               `;
@@ -60,7 +79,7 @@ export class NotificationsView {
 
         <div class="mobile-view-footer">
           <div class="creator-signature">
-            <span>Made by Sakcham</span>
+            <span>Made by Saksham</span>
             <span class="heart-icon">❤️</span>
           </div>
         </div>
@@ -81,6 +100,73 @@ export class NotificationsView {
       notificationService.clearAll();
       toast.info("Notifications cleared.");
       this.render();
+    });
+
+    // Accept Friend Request Button
+    this.container.querySelectorAll('.btn-notif-accept').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const reqId = btn.dataset.reqId;
+        const senderId = btn.dataset.senderId;
+        const notifId = btn.dataset.notifId;
+
+        try {
+          // If reqId is found directly, use it, or locate through incoming requests
+          let resolvedReqId = reqId;
+          if (!resolvedReqId && senderId) {
+            const incoming = friendService.getIncomingRequests();
+            const found = incoming.find(r => r.sender && r.sender.userId === senderId);
+            if (found) resolvedReqId = found.requestId;
+          }
+
+          if (resolvedReqId) {
+            const res = friendService.acceptFriendRequest(resolvedReqId);
+            toast.success("Friend request accepted! Chat unlocked ✨");
+            this.render();
+            if (this.onOpenConversation && res.conversation) {
+              this.onOpenConversation(res.conversation.conversationId);
+            }
+          } else {
+            notificationService.removeNotification(notifId);
+            toast.info("Request resolved.");
+            this.render();
+          }
+        } catch (err) {
+          toast.error(err.message);
+          this.render();
+        }
+      });
+    });
+
+    // Decline Friend Request Button
+    this.container.querySelectorAll('.btn-notif-decline').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const reqId = btn.dataset.reqId;
+        const notifId = btn.dataset.notifId;
+        try {
+          if (reqId) {
+            friendService.rejectFriendRequest(reqId);
+          } else if (notifId) {
+            notificationService.removeNotification(notifId);
+          }
+          toast.info("Friend request declined.");
+          this.render();
+        } catch (err) {
+          toast.error(err.message);
+        }
+      });
+    });
+
+    // Chat button on accepted notification
+    this.container.querySelectorAll('.btn-notif-chat').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.dataset.userId;
+        if (userId) {
+          const conv = chatService.getOrCreateConversation(userId);
+          if (this.onOpenConversation) {
+            this.onOpenConversation(conv.conversationId);
+          }
+        }
+      });
     });
   }
 }

@@ -1,7 +1,7 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
    Design Tokens & CSS Variables (Dark 3D & Light 3D Themes)
-   "Connect. Chat. Share. Together." | Made by Sakcham ❤️
+   "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 :root {
@@ -857,7 +857,7 @@ img, video {
 }
 
 /* ==========================================================================
-   CREATOR SIGNATURE: "Made by Sakcham ❤️"
+   CREATOR SIGNATURE: "Made by Saksham ❤️"
    Mandated in Prompt Sections #63 - #71
    ========================================================================== */
 
@@ -917,6 +917,380 @@ img, video {
   justify-content: center;
   padding: 24px 0 16px 0;
   margin-top: auto;
+}
+
+/* ==========================================================================
+   REAL-TIME SEARCH SUGGESTIONS & USER ID BADGES
+   ========================================================================== */
+
+.search-clear-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: var(--text-secondary);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: var(--transition-fast);
+  z-index: 5;
+}
+
+.search-clear-btn:hover {
+  background: var(--color-romantic-pink);
+  color: #fff;
+}
+
+/* Floating 3D Suggestions Dropdown Box */
+.search-suggestions-dropdown {
+  position: absolute;
+  top: calc(100% - 4px);
+  left: 16px;
+  right: 16px;
+  background: rgba(18, 20, 42, 0.95);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--glass-border-highlight);
+  border-radius: 18px;
+  box-shadow: var(--shadow-layer-3), 0 0 35px rgba(138, 63, 252, 0.35);
+  z-index: 1000;
+  max-height: 420px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideDownFade 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] .search-suggestions-dropdown {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(138, 63, 252, 0.3);
+  box-shadow: 0 16px 40px rgba(138, 63, 252, 0.2);
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.suggestions-header {
+  padding: 12px 14px 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--color-romantic-rose);
+  flex-shrink: 0;
+}
+
+.suggestions-hint {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.suggestions-list {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--glass-surface-1);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  user-select: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.selected {
+  background: var(--glass-surface-3);
+  border-color: var(--color-romantic-pink);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(255, 51, 102, 0.25);
+}
+
+.suggestion-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.suggestion-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.suggestion-name {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-mid-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.suggestion-username {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-romantic-rose);
+}
+
+/* Prominent User ID Badge */
+.user-id-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, rgba(138, 63, 252, 0.2) 0%, rgba(255, 51, 102, 0.2) 100%);
+  border: 1px solid rgba(138, 63, 252, 0.4);
+  color: #f1edff;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  transition: var(--transition-fast);
+}
+
+[data-theme="light"] .user-id-badge {
+  background: rgba(138, 63, 252, 0.12);
+  border-color: rgba(138, 63, 252, 0.35);
+  color: var(--color-primary);
+}
+
+.user-id-badge:hover {
+  border-color: var(--color-romantic-pink);
+  transform: scale(1.03);
+  box-shadow: 0 0 10px rgba(255, 51, 102, 0.35);
+}
+
+.suggestion-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 6px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.suggestion-badge.status-friend {
+  background: rgba(0, 230, 118, 0.18);
+  color: var(--color-success);
+  border: 1px solid rgba(0, 230, 118, 0.35);
+}
+
+.suggestion-badge.status-pending {
+  background: rgba(255, 171, 0, 0.18);
+  color: var(--color-warning);
+  border: 1px solid rgba(255, 171, 0, 0.35);
+}
+
+.suggestion-badge.status-incoming {
+  background: rgba(255, 51, 102, 0.18);
+  color: var(--color-romantic-pink);
+  border: 1px solid rgba(255, 51, 102, 0.35);
+}
+
+.suggestion-badge.status-none {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+}
+
+.suggestion-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.suggestion-actions .btn-3d {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+
+/* Empty Suggestions State */
+.suggestions-empty-state {
+  padding: 24px 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestions-empty-icon {
+  font-size: 28px;
+}
+
+.suggestions-empty-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.suggestions-empty-subtitle {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.suggestions-search-tip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed var(--glass-border);
+  text-align: left;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.suggestions-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--glass-border);
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.btn-goto-find-friends-global {
+  background: none;
+  border: none;
+  color: var(--color-romantic-rose);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: var(--transition-fast);
+}
+
+.btn-goto-find-friends-global:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* Query Highlighting */
+.search-highlight {
+  background: rgba(255, 51, 102, 0.35);
+  color: #fff;
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 800;
+}
+
+/* Sidebar Chat List Item Enhancements */
+.chat-item-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: -1px;
+}
+
+.chat-item-user {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-romantic-rose);
+}
+
+.chat-item-id-pill {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  color: var(--text-muted);
+}
+
+/* Find Friends Header & Quick Search Chips */
+.search-tab-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.search-helper-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.search-chip {
+  background: var(--glass-surface-2);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  font-family: var(--font-mono);
+}
+
+.search-chip:hover {
+  background: var(--glass-surface-3);
+  border-color: var(--color-romantic-pink);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.search-match-pill {
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(138, 63, 252, 0.15);
+  border: 1px solid rgba(138, 63, 252, 0.35);
+  color: var(--color-primary-light);
 }
 
 
@@ -1906,6 +2280,8 @@ img, video {
 /* Sidebar Search */
 .sidebar-search-box {
   padding: 12px 20px;
+  position: relative;
+  z-index: 100;
 }
 
 /* Navigation Tabs */
@@ -2309,6 +2685,18 @@ img, video {
 
   .friends-subtabs-wrap {
     margin-bottom: 12px;
+  }
+
+  .sidebar-search-box {
+    padding: 10px 14px;
+    z-index: 100;
+  }
+
+  .search-suggestions-dropdown {
+    left: 10px;
+    right: 10px;
+    max-height: calc(75vh - 80px);
+    z-index: 1100;
   }
 }
 

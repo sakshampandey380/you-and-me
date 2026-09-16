@@ -92,6 +92,8 @@
 /* Sidebar Search */
 .sidebar-search-box {
   padding: 12px 20px;
+  position: relative;
+  z-index: 100;
 }
 
 /* Navigation Tabs */
@@ -495,6 +497,18 @@
 
   .friends-subtabs-wrap {
     margin-bottom: 12px;
+  }
+
+  .sidebar-search-box {
+    padding: 10px 14px;
+    z-index: 100;
+  }
+
+  .search-suggestions-dropdown {
+    left: 10px;
+    right: 10px;
+    max-height: calc(75vh - 80px);
+    z-index: 1100;
   }
 }
 

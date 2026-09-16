@@ -1,6 +1,7 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
    Profile View Controller (3D Profile Card & Editor)
+   "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 import { auth } from '../services/auth.js';
@@ -18,6 +19,7 @@ export class ProfileView {
     const user = auth.getCurrentUser();
     if (!user) return;
 
+    const uid = user.uid || user.userId;
     const friends = friendService.getFriendsList();
     const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Recently';
 
@@ -35,7 +37,7 @@ export class ProfileView {
         </div>
         <div class="glass-panel-elevated card-3d" style="padding: 32px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;">
           <div class="avatar-wrap avatar-lg" style="margin-bottom: 4px;">
-            <img src="${user.profilePicture}" class="avatar-img" alt="${user.name}" id="profile-display-avatar" />
+            <img src="${user.profilePicture || user.avatar}" class="avatar-img" alt="${user.name}" id="profile-display-avatar" />
             <span class="avatar-status online"></span>
           </div>
 
@@ -43,7 +45,15 @@ export class ProfileView {
             <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 4px;">${user.name}</h2>
             <div style="font-size: 14px; color: var(--color-romantic-rose); font-weight: 600;">@${user.username}</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono); background: rgba(0,0,0,0.2); padding: 3px 10px; border-radius: 8px; display: inline-block;">
-              User ID: ${user.userId}
+              User ID: ${uid}
+            </div>
+            ${user.dob || user.birthday ? `
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                🎂 Birthday: ${user.dob || user.birthday}
+              </div>
+            ` : ''}
+            <div style="font-size: 12px; color: var(--color-cyan-accent); margin-top: 4px; font-weight: 600;">
+              🌐 Language: ${user.language || 'English'}
             </div>
           </div>
 
@@ -72,7 +82,7 @@ export class ProfileView {
         <!-- Creator Signature in Mobile/Desktop View -->
         <div class="mobile-view-footer">
           <div class="creator-signature">
-            <span>Made by Sakcham</span>
+            <span>Made by Saksham</span>
             <span class="heart-icon">❤️</span>
           </div>
         </div>
@@ -97,6 +107,13 @@ export class ProfileView {
             <div class="input-group">
               <label class="input-label">Bio</label>
               <textarea id="edit-bio" rows="3">${user.bio || ''}</textarea>
+            </div>
+            <div class="input-group">
+              <label class="input-label">Preferred Chat Language</label>
+              <select id="edit-language" style="width: 100%; padding: 10px 14px; border-radius: 12px; background: var(--glass-surface-2); color: var(--text-primary); border: 1px solid var(--glass-border); font-family: inherit;">
+                <option value="English" ${user.language === 'Hindi' ? '' : 'selected'}>English</option>
+                <option value="Hindi" ${user.language === 'Hindi' ? 'selected' : ''}>Hindi (हिंदी)</option>
+              </select>
             </div>
             <div class="input-group">
               <label class="input-label">Change Profile Picture</label>
@@ -154,9 +171,13 @@ export class ProfileView {
         const name = document.getElementById('edit-name').value.trim();
         const status = document.getElementById('edit-status').value.trim();
         const bio = document.getElementById('edit-bio').value.trim();
+        const language = document.getElementById('edit-language').value;
 
-        const updates = { name, status, bio };
-        if (newAvatarData) updates.profilePicture = newAvatarData;
+        const updates = { name, displayName: name, status, bio, language };
+        if (newAvatarData) {
+          updates.profilePicture = newAvatarData;
+          updates.avatar = newAvatarData;
+        }
 
         auth.updateCurrentUser(updates);
         toast.success("Profile updated successfully! ✨");

@@ -46,7 +46,7 @@ export class Background3D {
 
     this._createSpheres(6);
     this._createNodes(35);
-    this._createFloatingHearts(6);
+    this._createFloatingHearts(24);
     this.start();
   }
 
@@ -88,14 +88,29 @@ export class Background3D {
 
   _createFloatingHearts(count) {
     this.floatingHearts = [];
+    const hues = [335, 345, 320, 275, 355]; // Rose pink, ruby red, vibrant magenta, purple glow, neon crimson
+    const w = this.width || window.innerWidth;
+    const h = this.height || window.innerHeight;
     for (let i = 0; i < count; i++) {
       this.floatingHearts.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        size: Math.random() * 10 + 8,
-        speedY: Math.random() * 0.5 + 0.2,
-        wobble: Math.random() * Math.PI * 2,
-        alpha: Math.random() * 0.35 + 0.15
+        baseX: Math.random() * w,
+        baseY: Math.random() * h,
+        baseZ: Math.random() * 380 + 120, // 3D spatial depth
+        size: Math.random() * 10 + 11, // Size 11 to 21
+        radiusX: Math.random() * 34 + 18, // Omnidirectional drift bounds in X
+        radiusY: Math.random() * 30 + 16, // Omnidirectional drift bounds in Y
+        radiusZ: Math.random() * 42 + 20, // Depth oscillation
+        speedX: Math.random() * 0.012 + 0.007,
+        speedY: Math.random() * 0.014 + 0.008,
+        speedZ: Math.random() * 0.009 + 0.005,
+        speedRot: Math.random() * 0.015 + 0.008,
+        phaseX: Math.random() * Math.PI * 2,
+        phaseY: Math.random() * Math.PI * 2,
+        phaseZ: Math.random() * Math.PI * 2,
+        phaseRot: Math.random() * Math.PI * 2,
+        pulseSpeed: Math.random() * 0.035 + 0.02,
+        hue: hues[i % hues.length],
+        alpha: Math.random() * 0.35 + 0.45 // 0.45 to 0.8
       });
     }
   }
@@ -220,27 +235,70 @@ export class Background3D {
   }
 
   _drawFloatingHearts(isLight) {
-    this.ctx.save();
     for (let h of this.floatingHearts) {
-      h.y -= h.speedY;
-      h.wobble += 0.02;
-      const px = h.x + Math.sin(h.wobble) * 15 + this.mouseX * 0.2;
-      const py = h.y + this.mouseY * 0.2;
+      // Omnidirectional smooth drifting in place (X, Y, Z oscillate around anchor position in all directions)
+      const currentX = h.baseX 
+        + Math.sin(this.time * h.speedX + h.phaseX) * h.radiusX 
+        + Math.cos(this.time * (h.speedX * 0.6) + h.phaseY) * (h.radiusX * 0.4);
+      const currentY = h.baseY 
+        + Math.cos(this.time * h.speedY + h.phaseY) * h.radiusY 
+        + Math.sin(this.time * (h.speedY * 0.7) + h.phaseX) * (h.radiusY * 0.35);
+      const currentZ = h.baseZ 
+        + Math.sin(this.time * h.speedZ + h.phaseZ) * h.radiusZ;
 
-      if (h.y < -30) {
-        h.y = this.height + 30;
-        h.x = Math.random() * this.width;
-      }
+      // 3D perspective projection factor
+      const depthFactor = 300 / (currentZ || 300);
+      const px = currentX + this.mouseX * depthFactor;
+      const py = currentY + this.mouseY * depthFactor;
 
-      this.ctx.fillStyle = isLight ? `rgba(255, 51, 102, ${h.alpha * 0.6})` : `rgba(255, 51, 102, ${h.alpha})`;
+      // Heartbeat pulse & scale
+      const pulse = 1 + Math.sin(this.time * h.pulseSpeed + h.phaseX) * 0.15;
+      const r = h.size * depthFactor * pulse;
+      const rot = Math.sin(this.time * h.speedRot + h.phaseRot) * 0.26;
+      const alpha = isLight ? h.alpha * 0.75 : h.alpha;
+
+      this.ctx.save();
+      this.ctx.translate(px, py);
+      this.ctx.rotate(rot);
+
+      // 1. Radiant Multi-Layer Outer Halo Glow
+      const halo = this.ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 2.8);
+      halo.addColorStop(0, `hsla(${h.hue}, 100%, 70%, ${alpha * 0.55})`);
+      halo.addColorStop(0.45, `hsla(${h.hue}, 100%, 60%, ${alpha * 0.2})`);
+      halo.addColorStop(1, 'transparent');
+      this.ctx.fillStyle = halo;
       this.ctx.beginPath();
-      const d = h.size * 0.5;
-      this.ctx.moveTo(px, py - d * 0.4);
-      this.ctx.bezierCurveTo(px - d * 0.8, py - d * 1.2, px - d * 1.6, py - d * 0.2, px, py + d * 1.2);
-      this.ctx.bezierCurveTo(px + d * 1.6, py - d * 0.2, px + d * 0.8, py - d * 1.2, px, py - d * 0.4);
+      this.ctx.arc(0, 0, r * 2.8, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      // 2. High-intensity Shadow Glow
+      this.ctx.shadowColor = `hsla(${h.hue}, 100%, 72%, ${alpha})`;
+      this.ctx.shadowBlur = r * 1.8;
+
+      // 3. Heart Body Gradient Fill
+      const grad = this.ctx.createLinearGradient(0, -r, 0, r);
+      grad.addColorStop(0, `hsla(${h.hue}, 100%, 82%, ${alpha})`);
+      grad.addColorStop(0.5, `hsla(${h.hue}, 100%, 65%, ${alpha * 0.95})`);
+      grad.addColorStop(1, `hsla(${h.hue}, 95%, 48%, ${alpha * 0.9})`);
+      this.ctx.fillStyle = grad;
+
+      // Parametric Heart Shape
+      this.ctx.beginPath();
+      const d = r * 0.65;
+      this.ctx.moveTo(0, -d * 0.4);
+      this.ctx.bezierCurveTo(-d * 0.8, -d * 1.2, -d * 1.6, -d * 0.2, 0, d * 1.25);
+      this.ctx.bezierCurveTo(d * 1.6, -d * 0.2, d * 0.8, -d * 1.2, 0, -d * 0.4);
       this.ctx.closePath();
       this.ctx.fill();
+
+      // 4. Glossy 3D Highlight on Top Left Lobe
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.55})`;
+      this.ctx.beginPath();
+      this.ctx.arc(-d * 0.42, -d * 0.52, d * 0.26, 0, Math.PI * 2);
+      this.ctx.fill();
+
+      this.ctx.restore();
     }
-    this.ctx.restore();
   }
 }

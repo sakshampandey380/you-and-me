@@ -3,79 +3,13 @@
   var APP_CONFIG = {
     name: "You & Me",
     tagline: "Connect. Chat. Share. Together.",
-    creatorSignature: "Made by Sakcham \u2764\uFE0F",
+    creatorSignature: "Made by Saksham \u2764\uFE0F",
     version: "2.0.0",
+    dataVersion: "2.0",
     storagePrefix: "ym_3d_v2_",
-    uniqueIdPrefix: "YM-",
+    uniqueIdPrefix: "SK-",
     defaultAvatar: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'><stop offset='0%' stop-color='%238a3ffc'/><stop offset='100%' stop-color='%23ff3366'/></linearGradient></defs><circle cx='50' cy='50' r='50' fill='url(%23g)'/><circle cx='50' cy='38' r='18' fill='%23ffffff' opacity='0.9'/><path d='M20,84 C20,64 35,58 50,58 C65,58 80,64 80,84 Z' fill='%23ffffff' opacity='0.9'/></svg>"
   };
-  var INITIAL_DEMO_USERS = [
-    {
-      userId: "YM-482913",
-      name: "Alex Rivera",
-      username: "alex",
-      email: "alex@youandme.app",
-      password: "password123",
-      bio: "Passionate photographer & stargazer \u2728 Building the future of 3D spaces.",
-      status: "Exploring new horizons \u{1F30C}",
-      onlineStatus: "online",
-      lastSeen: "Just now",
-      profilePicture: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
-      createdAt: "2026-01-10T10:00:00Z"
-    },
-    {
-      userId: "YM-773104",
-      name: "Emma Watson",
-      username: "emma",
-      email: "emma@youandme.app",
-      password: "password123",
-      bio: "Coffee enthusiast, UI designer & book lover \u2615\u{1F4D6} Always here for deep talks.",
-      status: "Lost in a good melody \u{1F3A7}",
-      onlineStatus: "online",
-      lastSeen: "Just now",
-      profilePicture: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
-      createdAt: "2026-01-15T12:30:00Z"
-    },
-    {
-      userId: "YM-519280",
-      name: "Arjun Sharma",
-      username: "arjun",
-      email: "arjun@youandme.app",
-      password: "password123",
-      bio: "Tech explorer, rock climber & coder \u{1F3D4}\uFE0F Let's connect and create together.",
-      status: "Coding with passion \u{1F4BB}",
-      onlineStatus: "offline",
-      lastSeen: "15m ago",
-      profilePicture: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-      createdAt: "2026-02-01T08:15:00Z"
-    },
-    {
-      userId: "YM-628491",
-      name: "Sophia Chen",
-      username: "sophia",
-      email: "sophia@youandme.app",
-      password: "password123",
-      bio: "Digital artist & sound designer \u{1F3A8} Dreaming in pastel gradients.",
-      status: "Crafting 3D worlds \u{1F52E}",
-      onlineStatus: "online",
-      lastSeen: "Just now",
-      profilePicture: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
-      createdAt: "2026-02-14T14:00:00Z"
-    },
-    {
-      userId: "YM-304918",
-      name: "Daniel Brooks",
-      username: "daniel",
-      email: "daniel@youandme.app",
-      password: "password123",
-      bio: "Filmmaker & world traveler \u{1F3A5} Looking for stories that inspire.",
-      status: "Editing on the go \u2708\uFE0F",
-      onlineStatus: "offline",
-      lastSeen: "2 hours ago",
-      profilePicture: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
-      createdAt: "2026-03-01T16:45:00Z"
-    }
-  ];
   var EMOJI_CATEGORIES = [
     {
       name: "Love & Romance",
@@ -96,84 +30,264 @@
   ];
 
   // js/services/storage.js
+  var APP_DATA_VERSION = "2.0";
   var StorageService = class {
     constructor() {
       this.prefix = APP_CONFIG.storagePrefix;
       this.memoryStore = {};
+      this.dataVersion = APP_DATA_VERSION;
       this.init();
     }
     init() {
-      this._migrateLegacyStorage();
-      if (!this.get("users")) {
-        this.set("users", INITIAL_DEMO_USERS);
+      this._runDataMigration();
+      if (!this.get("app_users")) {
+        this.set("app_users", []);
       }
-      if (!this.get("friendships")) {
-        this.set("friendships", []);
+      if (!this.get("app_friendships")) {
+        this.set("app_friendships", []);
       }
-      if (!this.get("conversations")) {
-        this.set("conversations", []);
+      if (!this.get("app_friend_requests")) {
+        this.set("app_friend_requests", []);
       }
-      if (!this.get("notifications")) {
-        this.set("notifications", []);
+      if (!this.get("app_conversations")) {
+        this.set("app_conversations", []);
       }
-      if (!this.get("settings")) {
-        this.set("settings", {
+      if (!this.get("app_notifications")) {
+        this.set("app_notifications", []);
+      }
+      if (!this.get("app_settings")) {
+        this.set("app_settings", {
           theme: "dark",
           depthIntensity: 1,
           soundEnabled: true,
           enterToSend: true,
           privacyLastSeen: true,
-          privacyOnline: true
+          privacyOnline: true,
+          language: "English"
         });
       }
+      if (typeof window !== "undefined") {
+        window.addEventListener("storage", (e) => {
+          if (e.key) {
+            const rawKey = e.key.startsWith(this.prefix) ? e.key.replace(this.prefix, "") : e.key;
+            const canonical = this._normalizeKey(rawKey);
+            window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: canonical } }));
+            if (canonical === "app_users" || canonical === "app_friendships" || canonical === "app_friend_requests") {
+              window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+            }
+          }
+        });
+      }
+      if (typeof BroadcastChannel !== "undefined") {
+        try {
+          this.broadcastBus = new BroadcastChannel("ym_storage_bus");
+          this.broadcastBus.onmessage = (e) => {
+            if (e.data && e.data.type === "STORAGE_SET") {
+              const { key, value } = e.data;
+              const canonical = this._normalizeKey(key);
+              this.memoryStore[canonical] = value;
+              try {
+                if (typeof localStorage !== "undefined") {
+                  localStorage.setItem(canonical, JSON.stringify(value));
+                }
+              } catch (err) {
+              }
+              window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: canonical } }));
+              if (canonical === "app_users" || canonical === "app_friendships" || canonical === "app_friend_requests") {
+                window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+              }
+            }
+          };
+        } catch (e) {
+        }
+      }
     }
-    _migrateLegacyStorage() {
+    _runDataMigration() {
       try {
-        if (typeof localStorage !== "undefined") {
-          ["ym_3d_conversations", "ym_3d_friendships", "ym_3d_notifications"].forEach((k) => {
-            localStorage.removeItem(k);
+        if (typeof localStorage === "undefined") return;
+        const storedVersion = localStorage.getItem("app_data_version") || localStorage.getItem(this.prefix + "data_version");
+        if (storedVersion !== APP_DATA_VERSION) {
+          const legacyKeys = [
+            "ym_3d_conversations",
+            "ym_3d_friendships",
+            "ym_3d_notifications",
+            "ym_temp_session",
+            this.prefix + "active_session",
+            this.prefix + "conversations",
+            this.prefix + "friendships",
+            this.prefix + "notifications",
+            this.prefix + "users",
+            "active_session",
+            "app_current_user"
+          ];
+          legacyKeys.forEach((k) => {
+            try {
+              localStorage.removeItem(k);
+            } catch (e) {
+            }
           });
+          localStorage.setItem("app_data_version", APP_DATA_VERSION);
+          localStorage.setItem("app_users", JSON.stringify([]));
+          localStorage.setItem("app_friendships", JSON.stringify([]));
+          localStorage.setItem("app_friend_requests", JSON.stringify([]));
+          localStorage.setItem("app_conversations", JSON.stringify([]));
+          localStorage.setItem("app_notifications", JSON.stringify([]));
+          return;
+        }
+        const DEMO_USER_IDS = ["YM-482913", "YM-773104", "YM-519280", "YM-628491", "YM-304918"];
+        const DEMO_USERNAMES = ["alex", "emma", "arjun", "sophia", "daniel"];
+        const rawUsers = localStorage.getItem("app_users") || localStorage.getItem(this.prefix + "users");
+        if (rawUsers) {
+          try {
+            const parsedUsers = JSON.parse(rawUsers);
+            if (Array.isArray(parsedUsers)) {
+              const cleanUsers = parsedUsers.filter((u) => {
+                if (!u) return false;
+                const uid = String(u.uid || u.userId || "").toUpperCase();
+                const uname = String(u.username || "").toLowerCase();
+                if (DEMO_USER_IDS.includes(uid)) return false;
+                if (DEMO_USERNAMES.includes(uname)) return false;
+                if (String(u.name || "").toLowerCase().startsWith("member (ym-")) return false;
+                return true;
+              });
+              if (cleanUsers.length !== parsedUsers.length) {
+                localStorage.setItem("app_users", JSON.stringify(cleanUsers));
+              }
+            }
+          } catch (e) {
+          }
         }
       } catch (e) {
+        console.warn("[Storage] Migration warning:", e);
       }
+    }
+    _normalizeKey(key) {
+      const map = {
+        "users": "app_users",
+        "friendships": "app_friendships",
+        "friend_requests": "app_friend_requests",
+        "conversations": "app_conversations",
+        "notifications": "app_notifications",
+        "active_session": "app_current_user",
+        "current_user": "app_current_user",
+        "settings": "app_settings",
+        "data_version": "app_data_version"
+      };
+      return map[key] || key;
     }
     get(key) {
+      const canonical = this._normalizeKey(key);
       try {
         if (typeof localStorage !== "undefined") {
-          const data = localStorage.getItem(this.prefix + key);
-          if (data) return JSON.parse(data);
+          let raw = localStorage.getItem(canonical);
+          if (raw === null && this.prefix) {
+            raw = localStorage.getItem(this.prefix + key);
+          }
+          if (raw !== null) {
+            const parsed = JSON.parse(raw);
+            this.memoryStore[canonical] = parsed;
+            return parsed;
+          }
         }
       } catch (e) {
+        console.warn(`[Storage] Read error for ${key}:`, e);
       }
-      return this.memoryStore[key] ? JSON.parse(JSON.stringify(this.memoryStore[key])) : null;
+      return this.memoryStore[canonical] ? JSON.parse(JSON.stringify(this.memoryStore[canonical])) : null;
     }
     set(key, value) {
-      this.memoryStore[key] = value;
+      const canonical = this._normalizeKey(key);
+      this.memoryStore[canonical] = value;
+      const serialized = JSON.stringify(value);
       try {
         if (typeof localStorage !== "undefined") {
-          localStorage.setItem(this.prefix + key, JSON.stringify(value));
-          return true;
+          localStorage.setItem(canonical, serialized);
+          if (this.prefix && canonical !== key) {
+            try {
+              localStorage.setItem(this.prefix + key, serialized);
+            } catch (e) {
+            }
+          }
         }
       } catch (e) {
+        console.error(`[Storage] Write error for ${key}:`, e);
+        if (e.name === "QuotaExceededError" || e.code === 22 || e.code === 1014) {
+          throw new Error("This file is too large to store locally.");
+        }
+        throw e;
+      }
+      if (this.broadcastBus) {
+        try {
+          this.broadcastBus.postMessage({ type: "STORAGE_SET", key: canonical, value });
+        } catch (e) {
+        }
       }
       return true;
     }
     remove(key) {
-      delete this.memoryStore[key];
+      const canonical = this._normalizeKey(key);
+      delete this.memoryStore[canonical];
       try {
         if (typeof localStorage !== "undefined") {
-          localStorage.removeItem(this.prefix + key);
-          return true;
+          localStorage.removeItem(canonical);
+          if (this.prefix) {
+            localStorage.removeItem(this.prefix + key);
+          }
         }
       } catch (e) {
       }
       return true;
+    }
+    // High-level User Database helper methods
+    getUsers() {
+      return this.get("app_users") || [];
+    }
+    saveUsers(users) {
+      return this.set("app_users", users);
+    }
+    getCurrentUser() {
+      return this.get("app_current_user");
+    }
+    getUserByUid(uid) {
+      if (!uid) return null;
+      const clean = String(uid).trim().toUpperCase();
+      const cleanDigits = clean.replace(/[^0-9]/g, "");
+      const users = this.getUsers();
+      return users.find((u) => {
+        if (!u) return false;
+        const targetUid = String(u.uid || u.userId || "").toUpperCase();
+        const targetDigits = targetUid.replace(/[^0-9]/g, "");
+        return targetUid === clean || targetUid === "SK-" + clean || targetUid === "YM-" + clean || cleanDigits.length >= 6 && targetDigits === cleanDigits;
+      }) || null;
+    }
+    getFriends(uid) {
+      const targetUid = uid || (this.getCurrentUser() ? this.getCurrentUser().uid || this.getCurrentUser().userId : null);
+      if (!targetUid) return [];
+      const friendships = this.get("app_friendships") || [];
+      const friendUids = [];
+      friendships.forEach((f) => {
+        if (f.status === "accepted") {
+          const u1 = f.user1 || f.user1Id;
+          const u2 = f.user2 || f.user2Id;
+          if (u1 === targetUid) friendUids.push(u2);
+          else if (u2 === targetUid) friendUids.push(u1);
+        }
+      });
+      return friendUids.map((id) => this.getUserByUid(id)).filter(Boolean);
+    }
+    getFriendRequests(uid) {
+      const targetUid = uid || (this.getCurrentUser() ? this.getCurrentUser().uid || this.getCurrentUser().userId : null);
+      if (!targetUid) return [];
+      const requests = this.get("app_friend_requests") || [];
+      return requests.filter((r) => (r.to === targetUid || r.receiverId === targetUid) && r.status === "pending");
     }
     clearAll() {
       this.memoryStore = {};
       try {
         if (typeof localStorage !== "undefined") {
-          Object.keys(localStorage).filter((k) => k.startsWith(this.prefix)).forEach((k) => localStorage.removeItem(k));
+          ["app_users", "app_friendships", "app_friend_requests", "app_conversations", "app_notifications", "app_current_user", "app_settings"].forEach((k) => {
+            localStorage.removeItem(k);
+            localStorage.removeItem(this.prefix + k);
+          });
         }
       } catch (e) {
       }
@@ -190,37 +304,87 @@
       this._loadSession();
     }
     _loadSession() {
-      const session = storage.get("active_session");
-      if (session && session.userId) {
-        const users = storage.get("users") || [];
-        const user = users.find((u) => u.userId === session.userId);
+      let sessionUserId = null;
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          const temp = sessionStorage.getItem("ym_temp_session");
+          if (temp) {
+            const parsed = JSON.parse(temp);
+            if (parsed && (parsed.uid || parsed.userId)) {
+              sessionUserId = parsed.uid || parsed.userId;
+            }
+          }
+        }
+      } catch (e) {
+      }
+      if (!sessionUserId) {
+        const active = storage.get("app_current_user");
+        if (active && (active.uid || active.userId)) {
+          sessionUserId = active.uid || active.userId;
+        }
+      }
+      if (sessionUserId) {
+        const user = storage.getUserByUid(sessionUserId);
         if (user) {
           this.currentUser = user;
         }
       }
     }
     generateUserId() {
-      const randomNum = Math.floor(1e5 + Math.random() * 9e5);
-      return `${APP_CONFIG.uniqueIdPrefix}${randomNum}`;
+      const users = storage.getUsers();
+      const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+      let newId = "";
+      let isUnique = false;
+      while (!isUnique) {
+        let code = "";
+        for (let i = 0; i < 6; i++) {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        newId = `${APP_CONFIG.uniqueIdPrefix}${code}`;
+        const exists = users.some((u) => {
+          if (!u) return false;
+          const existing = String(u.uid || u.userId || "").toUpperCase();
+          return existing === newId.toUpperCase();
+        });
+        if (!exists) {
+          isUnique = true;
+        }
+      }
+      return newId;
     }
-    registerUser({ name, username, email, password, profilePicture }) {
-      const users = storage.get("users") || [];
-      const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-      const cleanEmail = email.trim().toLowerCase();
-      if (users.some((u) => u.username.toLowerCase() === cleanUsername)) {
+    registerUser({ name, username, email, password, dob = "", phone = "", language = "English", profilePicture }) {
+      const users = storage.getUsers();
+      const cleanUsername = String(username || "").trim().toLowerCase().replace(/^@+/, "").replace(/[^a-z0-9_]/g, "");
+      const cleanEmail = String(email || "").trim().toLowerCase();
+      if (!cleanUsername) {
+        throw new Error("Please enter a valid username.");
+      }
+      if (users.some((u) => String(u.username || "").toLowerCase() === cleanUsername)) {
         throw new Error("Username is already taken. Please choose another.");
       }
-      if (users.some((u) => u.email.toLowerCase() === cleanEmail)) {
+      if (users.some((u) => String(u.email || "").toLowerCase() === cleanEmail)) {
         throw new Error("An account with this email already exists.");
       }
+      const trimmedName = String(name || "").trim();
+      const cleanDob = String(dob || "").trim();
+      const cleanPhone = String(phone || "").trim();
+      const uid = this.generateUserId();
+      const avatar = profilePicture || APP_CONFIG.defaultAvatar;
       const newUser = {
-        userId: this.generateUserId(),
-        name: name.trim(),
+        uid,
+        userId: uid,
+        // Alias for backward compatibility
+        name: trimmedName,
+        displayName: trimmedName,
         username: cleanUsername,
         email: cleanEmail,
+        phone: cleanPhone,
         password,
-        // In production, hashed on server
-        profilePicture: profilePicture || APP_CONFIG.defaultAvatar,
+        dob: cleanDob,
+        birthday: cleanDob,
+        avatar,
+        profilePicture: avatar,
+        language: language || "English",
         bio: "Hey there! I am using You & Me \u{1F680}",
         status: "Available for conversations \u2728",
         onlineStatus: "online",
@@ -228,16 +392,30 @@
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
       users.push(newUser);
-      storage.set("users", users);
+      storage.saveUsers(users);
       this._setSession(newUser, true);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:user_registered", { detail: newUser }));
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_users" } }));
+      }
       return newUser;
     }
     loginUser(identifier, password, rememberMe = true) {
-      const users = storage.get("users") || [];
-      const cleanId = identifier.trim().toLowerCase();
-      const user = users.find(
-        (u) => u.email.toLowerCase() === cleanId || u.username.toLowerCase() === cleanId || u.userId.toLowerCase() === cleanId
-      );
+      const users = storage.getUsers();
+      const raw = String(identifier || "").trim();
+      const cleanLower = raw.toLowerCase();
+      const cleanUser = cleanLower.replace(/^@+/, "");
+      const cleanDigits = cleanLower.replace(/[^0-9]/g, "");
+      const user = users.find((u) => {
+        if (!u) return false;
+        const uEmail = String(u.email || "").toLowerCase();
+        const uUser = String(u.username || "").toLowerCase();
+        const uId = String(u.uid || u.userId || "").toLowerCase();
+        const uDigits = uId.replace(/[^0-9]/g, "");
+        const uPhone = String(u.phone || "").toLowerCase();
+        return uEmail === cleanLower || uUser === cleanUser || uId === cleanLower || uId === "sk-" + cleanLower || uId === "ym-" + cleanLower || cleanDigits.length >= 6 && uDigits === cleanDigits || cleanDigits.length >= 6 && uPhone && uPhone.replace(/[^0-9]/g, "") === cleanDigits;
+      });
       if (!user) {
         throw new Error("No account found with this username, email or ID.");
       }
@@ -246,16 +424,37 @@
       }
       user.onlineStatus = "online";
       user.lastSeen = "Just now";
-      storage.set("users", users);
+      storage.saveUsers(users);
       this._setSession(user, rememberMe);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:auth_changed", { detail: user }));
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+      }
       return user;
     }
-    _setSession(user, remember) {
+    _setSession(user, remember = true) {
       this.currentUser = user;
+      const sessionPayload = {
+        uid: user.uid || user.userId,
+        userId: user.uid || user.userId,
+        token: "ym_auth_" + Date.now()
+      };
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.setItem("ym_temp_session", JSON.stringify(sessionPayload));
+        }
+      } catch (e) {
+      }
       if (remember) {
-        storage.set("active_session", { userId: user.userId, token: "mock_jwt_ym_" + Date.now() });
-      } else {
-        sessionStorage.setItem("ym_temp_session", JSON.stringify({ userId: user.userId }));
+        storage.set("app_current_user", sessionPayload);
+      }
+    }
+    setCurrentUser(user) {
+      if (!user) return;
+      this._setSession(user, true);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:auth_changed", { detail: user }));
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
       }
     }
     getCurrentUser() {
@@ -266,29 +465,43 @@
     }
     updateCurrentUser(updates) {
       if (!this.currentUser) return null;
-      const users = storage.get("users") || [];
-      const index = users.findIndex((u) => u.userId === this.currentUser.userId);
+      const users = storage.getUsers();
+      const currentUid = this.currentUser.uid || this.currentUser.userId;
+      const index = users.findIndex((u) => (u.uid || u.userId) === currentUid);
       if (index !== -1) {
         users[index] = { ...users[index], ...updates };
         this.currentUser = users[index];
-        storage.set("users", users);
+        storage.saveUsers(users);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("ym:profile_updated", { detail: this.currentUser }));
+          window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_users" } }));
+        }
         return this.currentUser;
       }
       return null;
     }
     logout() {
       if (this.currentUser) {
-        const users = storage.get("users") || [];
-        const user = users.find((u) => u.userId === this.currentUser.userId);
+        const users = storage.getUsers();
+        const currentUid = this.currentUser.uid || this.currentUser.userId;
+        const user = users.find((u) => (u.uid || u.userId) === currentUid);
         if (user) {
           user.onlineStatus = "offline";
           user.lastSeen = "Just now";
-          storage.set("users", users);
+          storage.saveUsers(users);
         }
       }
       this.currentUser = null;
-      storage.remove("active_session");
-      sessionStorage.removeItem("ym_temp_session");
+      storage.remove("app_current_user");
+      try {
+        if (typeof sessionStorage !== "undefined") {
+          sessionStorage.removeItem("ym_temp_session");
+        }
+      } catch (e) {
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:auth_changed", { detail: null }));
+      }
     }
     isAuthenticated() {
       return !!this.getCurrentUser();
@@ -389,25 +602,146 @@
   };
   var sound = new SoundService();
 
+  // js/services/notification.js
+  var NotificationService = class {
+    _getNotifications() {
+      return storage.get("app_notifications") || [];
+    }
+    _saveNotifications(list) {
+      storage.set("app_notifications", list);
+    }
+    _getCurrentUid() {
+      const current = auth.getCurrentUser();
+      return current ? String(current.uid || current.userId || "") : null;
+    }
+    getNotifications(targetUserId = null) {
+      const currentId = targetUserId ? String(targetUserId) : this._getCurrentUid();
+      const list = this._getNotifications();
+      const scoped = list.filter((n) => {
+        if (!currentId) return false;
+        const to = String(n.toUserId || n.recipientUid || "");
+        return to.toUpperCase() === currentId.toUpperCase();
+      });
+      return scoped.sort((a, b) => new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime());
+    }
+    getUnreadCount(targetUserId = null) {
+      const currentId = targetUserId ? String(targetUserId) : this._getCurrentUid();
+      if (!currentId) return 0;
+      const list = this._getNotifications();
+      return list.filter((n) => {
+        const to = String(n.toUserId || n.recipientUid || "");
+        return to.toUpperCase() === currentId.toUpperCase() && !n.read;
+      }).length;
+    }
+    addNotification({ type, title, message, fromUserId = null, toUserId = null, requestId = null }) {
+      if (!toUserId) return null;
+      const list = this._getNotifications();
+      const notifId = "notif-" + Date.now() + "-" + Math.floor(Math.random() * 1e3);
+      const newNotif = {
+        id: notifId,
+        notificationId: notifId,
+        type,
+        // 'message' | 'friend_request' | 'friend_accepted' | 'reaction'
+        title,
+        message,
+        fromUserId,
+        senderUid: fromUserId,
+        toUserId,
+        recipientUid: toUserId,
+        requestId,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+        read: false
+      };
+      list.unshift(newNotif);
+      this._saveNotifications(list);
+      try {
+        sound.playNotification();
+      } catch (e) {
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:notification_added", { detail: newNotif }));
+        window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_notifications" } }));
+      }
+      return newNotif;
+    }
+    removeNotification(notifId) {
+      const list = this._getNotifications();
+      const filtered = list.filter((n) => n.id !== notifId && n.notificationId !== notifId);
+      this._saveNotifications(filtered);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_notifications" } }));
+      }
+      return true;
+    }
+    removeNotificationByRequestId(requestId) {
+      if (!requestId) return false;
+      const list = this._getNotifications();
+      const filtered = list.filter((n) => n.requestId !== requestId);
+      this._saveNotifications(filtered);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_notifications" } }));
+      }
+      return true;
+    }
+    markAllAsRead() {
+      const currentId = this._getCurrentUid();
+      if (!currentId) return;
+      const list = this._getNotifications();
+      list.forEach((n) => {
+        const to = String(n.toUserId || n.recipientUid || "");
+        if (to.toUpperCase() === currentId.toUpperCase()) {
+          n.read = true;
+        }
+      });
+      this._saveNotifications(list);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_notifications" } }));
+      }
+    }
+    clearAll() {
+      const currentId = this._getCurrentUid();
+      if (!currentId) return;
+      const list = this._getNotifications();
+      const remaining = list.filter((n) => {
+        const to = String(n.toUserId || n.recipientUid || "");
+        return to.toUpperCase() !== currentId.toUpperCase();
+      });
+      this._saveNotifications(remaining);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_notifications" } }));
+      }
+    }
+  };
+  var notificationService = new NotificationService();
+
   // js/services/chat.js
   var ChatService = class {
     _getConversations() {
-      return storage.get("conversations") || [];
+      return storage.get("app_conversations") || [];
     }
     _saveConversations(convs) {
-      storage.set("conversations", convs);
+      return storage.set("app_conversations", convs);
     }
-    _resolveId(id) {
+    _getCurrentUid() {
       const current = auth.getCurrentUser();
-      if (id === "CURRENT_USER" && current) return current.userId;
-      return id;
+      return current ? String(current.uid || current.userId || "") : null;
     }
     getConversations() {
-      const current = auth.getCurrentUser();
-      if (!current) return [];
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
       const convs = this._getConversations();
-      return convs.filter((c) => c.participants.map((p) => this._resolveId(p)).includes(current.userId)).map((c) => {
-        const otherId = c.participants.map((p) => this._resolveId(p)).find((id) => id !== current.userId);
+      const me = currentUid.toUpperCase();
+      return convs.filter((c) => {
+        if (!c || !Array.isArray(c.participants)) return false;
+        return c.participants.some((p) => String(p).toUpperCase() === me);
+      }).map((c) => {
+        const otherId = c.participants.find((p) => String(p).toUpperCase() !== me);
         const lastMsg = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
         return {
           ...c,
@@ -415,57 +749,67 @@
           lastMessage: lastMsg
         };
       }).sort((a, b) => {
-        const timeA = a.lastMessage ? new Date(a.lastMessage.timestamp).getTime() : new Date(a.createdAt).getTime();
-        const timeB = b.lastMessage ? new Date(b.lastMessage.timestamp).getTime() : new Date(b.createdAt).getTime();
+        const timeA = a.lastMessage ? new Date(a.lastMessage.timestamp).getTime() : new Date(a.createdAt || 0).getTime();
+        const timeB = b.lastMessage ? new Date(b.lastMessage.timestamp).getTime() : new Date(b.createdAt || 0).getTime();
         return timeB - timeA;
       });
     }
     getConversationById(convId) {
-      const current = auth.getCurrentUser();
-      if (!current) return null;
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !convId) return null;
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) return null;
-      const otherId = conv.participants.map((p) => this._resolveId(p)).find((id) => id !== current.userId);
+      const me = currentUid.toUpperCase();
+      const otherId = conv.participants.find((p) => String(p).toUpperCase() !== me);
       return {
         ...conv,
         otherParticipantId: otherId
       };
     }
     getOrCreateConversation(targetUserId) {
-      const current = auth.getCurrentUser();
-      if (!current) throw new Error("Please log in first.");
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) throw new Error("Please log in first.");
       const convs = this._getConversations();
+      const me = currentUid.toUpperCase();
+      const target = String(targetUserId).toUpperCase();
       let conv = convs.find((c) => {
-        const parts = c.participants.map((p) => this._resolveId(p));
-        return parts.includes(current.userId) && parts.includes(targetUserId);
+        if (!c || !Array.isArray(c.participants)) return false;
+        const parts = c.participants.map((p) => String(p).toUpperCase());
+        return parts.includes(me) && parts.includes(target);
       });
       if (!conv) {
-        conv = {
-          conversationId: "conv-" + Date.now(),
-          participants: [current.userId, targetUserId],
-          createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-          unreadCount: 0,
-          messages: []
-        };
-        convs.unshift(conv);
-        this._saveConversations(convs);
+        const sortedUids = [currentUid, String(targetUserId)].sort();
+        const stableConvId = `conv-${sortedUids[0]}_${sortedUids[1]}`;
+        conv = convs.find((c) => c.conversationId === stableConvId);
+        if (!conv) {
+          conv = {
+            conversationId: stableConvId,
+            participants: [currentUid, String(targetUserId)],
+            createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+            unreadCount: 0,
+            messages: []
+          };
+          convs.unshift(conv);
+          this._saveConversations(convs);
+        }
       }
       return {
         ...conv,
-        otherParticipantId: targetUserId
+        otherParticipantId: String(targetUserId)
       };
     }
     sendMessage(convId, { type = "text", text = "", mediaUrl = null, fileName = null, fileSize = null, replyTo = null }) {
       const current = auth.getCurrentUser();
       if (!current) throw new Error("Please log in first.");
+      const currentUid = current.uid || current.userId;
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) throw new Error("Conversation not found.");
       const messageId = "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
       const newMsg = {
         id: messageId,
-        senderId: current.userId,
+        senderId: currentUid,
         type,
         // 'text' | 'image' | 'video' | 'file'
         text: text ? text.trim() : "",
@@ -479,18 +823,43 @@
         reactions: []
       };
       conv.messages.push(newMsg);
-      this._saveConversations(convs);
-      sound.playMessageSent();
+      try {
+        this._saveConversations(convs);
+      } catch (err) {
+        conv.messages.pop();
+        throw new Error("This file is too large to store locally.");
+      }
+      try {
+        sound.playMessageSent();
+      } catch (e) {
+      }
+      const otherParticipantId = conv.participants.find((p) => String(p).toUpperCase() !== String(currentUid).toUpperCase());
+      if (otherParticipantId) {
+        let previewText = newMsg.text;
+        if (type === "image") previewText = "Sent a photo \u{1F4F7}";
+        else if (type === "video") previewText = "Sent a video \u{1F3A5}";
+        else if (type === "file") previewText = `Sent a file: ${fileName || "document"} \u{1F4CE}`;
+        notificationService.addNotification({
+          type: "message",
+          title: current.displayName || current.name,
+          message: previewText || "Sent you a message",
+          fromUserId: currentUid,
+          toUserId: otherParticipantId
+        });
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_conversations" } }));
+      }
       return newMsg;
     }
     editMessage(convId, messageId, newText) {
-      const current = auth.getCurrentUser();
-      if (!current) return null;
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return null;
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) return null;
       const msg = conv.messages.find((m) => m.id === messageId);
-      if (msg && this._resolveId(msg.senderId) === current.userId) {
+      if (msg && String(msg.senderId).toUpperCase() === currentUid.toUpperCase()) {
         msg.text = newText.trim();
         msg.edited = true;
         msg.editedAt = (/* @__PURE__ */ new Date()).toISOString();
@@ -500,8 +869,8 @@
       return null;
     }
     deleteMessage(convId, messageId, mode = "everyone") {
-      const current = auth.getCurrentUser();
-      if (!current) return false;
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return false;
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) return false;
@@ -514,16 +883,16 @@
         msg.deleted = true;
       } else {
         msg.deletedFor = msg.deletedFor || [];
-        if (!msg.deletedFor.includes(current.userId)) {
-          msg.deletedFor.push(current.userId);
+        if (!msg.deletedFor.includes(currentUid)) {
+          msg.deletedFor.push(currentUid);
         }
       }
       this._saveConversations(convs);
       return true;
     }
     toggleReaction(convId, messageId, emoji) {
-      const current = auth.getCurrentUser();
-      if (!current) return null;
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return null;
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) return null;
@@ -532,37 +901,42 @@
       msg.reactions = msg.reactions || [];
       let existingReaction = msg.reactions.find((r) => r.emoji === emoji);
       if (existingReaction) {
-        const userIndex = existingReaction.userIds.map((id) => this._resolveId(id)).indexOf(current.userId);
+        const userIndex = existingReaction.userIds.map((id) => String(id).toUpperCase()).indexOf(currentUid.toUpperCase());
         if (userIndex !== -1) {
           existingReaction.userIds.splice(userIndex, 1);
           if (existingReaction.userIds.length === 0) {
             msg.reactions = msg.reactions.filter((r) => r.emoji !== emoji);
           }
         } else {
-          existingReaction.userIds.push(current.userId);
+          existingReaction.userIds.push(currentUid);
         }
       } else {
         msg.reactions.push({
           emoji,
-          userIds: [current.userId]
+          userIds: [currentUid]
         });
       }
       this._saveConversations(convs);
       return msg.reactions;
     }
     markAsRead(convId) {
-      const current = auth.getCurrentUser();
-      if (!current) return;
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return;
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) return;
       conv.unreadCount = 0;
+      const me = currentUid.toUpperCase();
+      let changed = false;
       conv.messages.forEach((m) => {
-        if (this._resolveId(m.senderId) !== current.userId && m.status !== "read") {
+        if (String(m.senderId).toUpperCase() !== me && m.status !== "read") {
           m.status = "read";
+          changed = true;
         }
       });
-      this._saveConversations(convs);
+      if (changed) {
+        this._saveConversations(convs);
+      }
     }
     searchInConversation(convId, query) {
       if (!query || !query.trim()) return [];
@@ -576,94 +950,33 @@
   };
   var chatService = new ChatService();
 
-  // js/services/user.js
-  var UserService = class {
-    getUserById(userId) {
-      if (!userId) return null;
-      const current = auth.getCurrentUser();
-      if (userId === "CURRENT_USER" && current) {
-        return current;
-      }
-      const users = storage.get("users") || [];
-      return users.find((u) => u.userId === userId) || null;
-    }
-    getAllUsers() {
-      return storage.get("users") || [];
-    }
-    searchUsers(query) {
-      if (!query || !query.trim()) return [];
-      const q = query.trim().toLowerCase();
-      const current = auth.getCurrentUser();
-      const currentId = current ? current.userId : null;
-      const users = this.getAllUsers();
-      return users.filter((u) => {
-        if (currentId && u.userId === currentId) return false;
-        const matchName = u.name.toLowerCase().includes(q);
-        const matchUser = u.username.toLowerCase().includes(q);
-        const matchId = u.userId.toLowerCase().includes(q);
-        return matchName || matchUser || matchId;
-      });
-    }
-    updateProfile(profileData) {
-      return auth.updateCurrentUser(profileData);
-    }
-  };
-  var userService = new UserService();
-
-  // js/services/notification.js
-  var NotificationService = class {
-    _getNotifications() {
-      return storage.get("notifications") || [];
-    }
-    _saveNotifications(list) {
-      storage.set("notifications", list);
-    }
-    getNotifications() {
-      return this._getNotifications().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    }
-    getUnreadCount() {
-      return this._getNotifications().filter((n) => !n.read).length;
-    }
-    addNotification({ type, title, message, fromUserId = null }) {
-      const list = this._getNotifications();
-      const newNotif = {
-        id: "notif-" + Date.now(),
-        type,
-        // 'message' | 'friend_request' | 'friend_accepted' | 'reaction'
-        title,
-        message,
-        fromUserId,
-        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        read: false
-      };
-      list.unshift(newNotif);
-      this._saveNotifications(list);
-      sound.playNotification();
-      window.dispatchEvent(new CustomEvent("ym:notification_added", { detail: newNotif }));
-      return newNotif;
-    }
-    markAllAsRead() {
-      const list = this._getNotifications();
-      list.forEach((n) => n.read = true);
-      this._saveNotifications(list);
-      window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
-    }
-    clearAll() {
-      this._saveNotifications([]);
-      window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
-    }
-  };
-  var notificationService2 = new NotificationService();
-
   // js/services/realtime.js
   var RealtimeService = class {
     constructor() {
       this.listeners = /* @__PURE__ */ new Map();
       this.activeConversationId = null;
-      this.socket = null;
-      this.isWsConnected = false;
+      this._initStorageListeners();
     }
-    // Subscribe to realtime events
+    _initStorageListeners() {
+      if (typeof window !== "undefined") {
+        window.addEventListener("ym:storage_changed", (e) => {
+          if (e.detail && e.detail.key === "app_conversations") {
+            this._handleExternalConversationsUpdate();
+          }
+        });
+      }
+    }
+    _handleExternalConversationsUpdate() {
+      if (!this.activeConversationId) return;
+      const conv = chatService.getConversationById(this.activeConversationId);
+      if (!conv || !conv.messages) return;
+      const current = auth.getCurrentUser();
+      const currentUid = current ? String(current.uid || current.userId || "").toUpperCase() : "";
+      const lastMsg = conv.messages[conv.messages.length - 1];
+      if (lastMsg && String(lastMsg.senderId).toUpperCase() !== currentUid) {
+        this.emit("message:received", { conversationId: this.activeConversationId, message: lastMsg });
+      }
+    }
     on(event, callback) {
       if (!this.listeners.has(event)) {
         this.listeners.set(event, []);
@@ -683,106 +996,12 @@
     setActiveConversation(convId) {
       this.activeConversationId = convId;
     }
-    // Real WebSocket connect method (ready for backend server)
-    connectWebSocket(url) {
-      if (!url) return;
-      try {
-        this.socket = new WebSocket(url);
-        this.socket.onopen = () => {
-          this.isWsConnected = true;
-          this.emit("connection:ready", { status: "connected" });
-        };
-        this.socket.onmessage = (event) => {
-          try {
-            const { type, payload } = JSON.parse(event.data);
-            this.emit(type, payload);
-          } catch (e) {
-            console.error("Invalid WS message format", e);
-          }
-        };
-        this.socket.onclose = () => {
-          this.isWsConnected = false;
-          this.emit("connection:closed", {});
-        };
-      } catch (e) {
-        console.warn("WebSocket not available, falling back to simulated realtime engine", e);
-      }
-    }
-    // Simulate Partner Interactive Responses
     handleUserSentMessage(convId, sentMessage) {
-      const conv = chatService.getConversationById(convId);
-      if (!conv) return;
-      const partnerId = conv.otherParticipantId;
-      const partner = userService.getUserById(partnerId);
-      if (!partner) return;
+      if (!convId || !sentMessage) return;
       setTimeout(() => {
         sentMessage.status = "delivered";
         this.emit("message:status_update", { messageId: sentMessage.id, status: "delivered" });
-      }, 700);
-      setTimeout(() => {
-        sentMessage.status = "read";
-        this.emit("message:status_update", { messageId: sentMessage.id, status: "read" });
-      }, 1400);
-      const typingDelay = 1800 + Math.random() * 800;
-      setTimeout(() => {
-        this.emit("typing:start", { conversationId: convId, userId: partnerId, userName: partner.name });
-        const replyDelay = 2200 + Math.random() * 1400;
-        setTimeout(() => {
-          this.emit("typing:stop", { conversationId: convId, userId: partnerId });
-          const replyText = this._generatePartnerResponse(partner.name, sentMessage.text);
-          const replyMsg = {
-            id: "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5),
-            senderId: partnerId,
-            type: "text",
-            text: replyText,
-            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-            status: "read",
-            reactions: []
-          };
-          conv.messages.push(replyMsg);
-          chatService._saveConversations(chatService._getConversations());
-          this.emit("message:received", { conversationId: convId, message: replyMsg });
-          if (this.activeConversationId === convId) {
-            sound.playMessageReceived();
-          } else {
-            conv.unreadCount = (conv.unreadCount || 0) + 1;
-            chatService._saveConversations(chatService._getConversations());
-            notificationService2.addNotification({
-              type: "message",
-              title: partner.name,
-              message: replyText,
-              fromUserId: partnerId
-            });
-          }
-        }, replyDelay);
-      }, typingDelay);
-    }
-    _generatePartnerResponse(name, incomingText) {
-      const text = (incomingText || "").toLowerCase();
-      if (text.includes("hey") || text.includes("hello") || text.includes("hi")) {
-        return `Hey! Wonderful to hear from you! How is your day going? \u2728`;
-      }
-      if (text.includes("how are you") || text.includes("how r u")) {
-        return `I'm doing fantastic! The 3D atmosphere here in You & Me is so mesmerizing \u{1F31F} What about you?`;
-      }
-      if (text.includes("love") || text.includes("heart") || text.includes("you & me")) {
-        return `You & Me has the best romantic 3D vibes! Love the flying hearts and spatial depth \u2764\uFE0F`;
-      }
-      if (text.includes("photo") || text.includes("pic") || text.includes("image")) {
-        return `That looks incredible! The 3D viewer makes it pop out so vividly \u{1F4F8}`;
-      }
-      if (text.includes("bye") || text.includes("night")) {
-        return `Goodnight! Sweet dreams, talk to you soon! \u{1F319}\u{1F4AB}`;
-      }
-      const responses = [
-        `I completely agree! The depth and smooth glass look unreal \u2728`,
-        `That sounds so nice! Tell me more about it \u{1F60A}`,
-        `Absolutely! That made my day \u2764\uFE0F`,
-        `Haha that's amazing! Have you tested the reactions bar yet? \u{1F525}`,
-        `I love how fluid and fast this chat feels! \u{1F680}`,
-        `Always here for you! Let's make today unforgettable \u{1F4AB}`
-      ];
-      return responses[Math.floor(Math.random() * responses.length)];
+      }, 600);
     }
   };
   var realtime = new RealtimeService();
@@ -821,7 +1040,7 @@
       }, { passive: true });
       this._createSpheres(6);
       this._createNodes(35);
-      this._createFloatingHearts(6);
+      this._createFloatingHearts(24);
       this.start();
     }
     resize() {
@@ -861,14 +1080,35 @@
     }
     _createFloatingHearts(count) {
       this.floatingHearts = [];
+      const hues = [335, 345, 320, 275, 355];
+      const w = this.width || window.innerWidth;
+      const h = this.height || window.innerHeight;
       for (let i = 0; i < count; i++) {
         this.floatingHearts.push({
-          x: Math.random() * this.width,
-          y: Math.random() * this.height,
-          size: Math.random() * 10 + 8,
-          speedY: Math.random() * 0.5 + 0.2,
-          wobble: Math.random() * Math.PI * 2,
-          alpha: Math.random() * 0.35 + 0.15
+          baseX: Math.random() * w,
+          baseY: Math.random() * h,
+          baseZ: Math.random() * 380 + 120,
+          // 3D spatial depth
+          size: Math.random() * 10 + 11,
+          // Size 11 to 21
+          radiusX: Math.random() * 34 + 18,
+          // Omnidirectional drift bounds in X
+          radiusY: Math.random() * 30 + 16,
+          // Omnidirectional drift bounds in Y
+          radiusZ: Math.random() * 42 + 20,
+          // Depth oscillation
+          speedX: Math.random() * 0.012 + 7e-3,
+          speedY: Math.random() * 0.014 + 8e-3,
+          speedZ: Math.random() * 9e-3 + 5e-3,
+          speedRot: Math.random() * 0.015 + 8e-3,
+          phaseX: Math.random() * Math.PI * 2,
+          phaseY: Math.random() * Math.PI * 2,
+          phaseZ: Math.random() * Math.PI * 2,
+          phaseRot: Math.random() * Math.PI * 2,
+          pulseSpeed: Math.random() * 0.035 + 0.02,
+          hue: hues[i % hues.length],
+          alpha: Math.random() * 0.35 + 0.45
+          // 0.45 to 0.8
         });
       }
     }
@@ -966,26 +1206,49 @@
       this.ctx.restore();
     }
     _drawFloatingHearts(isLight) {
-      this.ctx.save();
       for (let h of this.floatingHearts) {
-        h.y -= h.speedY;
-        h.wobble += 0.02;
-        const px = h.x + Math.sin(h.wobble) * 15 + this.mouseX * 0.2;
-        const py = h.y + this.mouseY * 0.2;
-        if (h.y < -30) {
-          h.y = this.height + 30;
-          h.x = Math.random() * this.width;
-        }
-        this.ctx.fillStyle = isLight ? `rgba(255, 51, 102, ${h.alpha * 0.6})` : `rgba(255, 51, 102, ${h.alpha})`;
+        const currentX = h.baseX + Math.sin(this.time * h.speedX + h.phaseX) * h.radiusX + Math.cos(this.time * (h.speedX * 0.6) + h.phaseY) * (h.radiusX * 0.4);
+        const currentY = h.baseY + Math.cos(this.time * h.speedY + h.phaseY) * h.radiusY + Math.sin(this.time * (h.speedY * 0.7) + h.phaseX) * (h.radiusY * 0.35);
+        const currentZ = h.baseZ + Math.sin(this.time * h.speedZ + h.phaseZ) * h.radiusZ;
+        const depthFactor = 300 / (currentZ || 300);
+        const px = currentX + this.mouseX * depthFactor;
+        const py = currentY + this.mouseY * depthFactor;
+        const pulse = 1 + Math.sin(this.time * h.pulseSpeed + h.phaseX) * 0.15;
+        const r = h.size * depthFactor * pulse;
+        const rot = Math.sin(this.time * h.speedRot + h.phaseRot) * 0.26;
+        const alpha = isLight ? h.alpha * 0.75 : h.alpha;
+        this.ctx.save();
+        this.ctx.translate(px, py);
+        this.ctx.rotate(rot);
+        const halo = this.ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 2.8);
+        halo.addColorStop(0, `hsla(${h.hue}, 100%, 70%, ${alpha * 0.55})`);
+        halo.addColorStop(0.45, `hsla(${h.hue}, 100%, 60%, ${alpha * 0.2})`);
+        halo.addColorStop(1, "transparent");
+        this.ctx.fillStyle = halo;
         this.ctx.beginPath();
-        const d = h.size * 0.5;
-        this.ctx.moveTo(px, py - d * 0.4);
-        this.ctx.bezierCurveTo(px - d * 0.8, py - d * 1.2, px - d * 1.6, py - d * 0.2, px, py + d * 1.2);
-        this.ctx.bezierCurveTo(px + d * 1.6, py - d * 0.2, px + d * 0.8, py - d * 1.2, px, py - d * 0.4);
+        this.ctx.arc(0, 0, r * 2.8, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.shadowColor = `hsla(${h.hue}, 100%, 72%, ${alpha})`;
+        this.ctx.shadowBlur = r * 1.8;
+        const grad = this.ctx.createLinearGradient(0, -r, 0, r);
+        grad.addColorStop(0, `hsla(${h.hue}, 100%, 82%, ${alpha})`);
+        grad.addColorStop(0.5, `hsla(${h.hue}, 100%, 65%, ${alpha * 0.95})`);
+        grad.addColorStop(1, `hsla(${h.hue}, 95%, 48%, ${alpha * 0.9})`);
+        this.ctx.fillStyle = grad;
+        this.ctx.beginPath();
+        const d = r * 0.65;
+        this.ctx.moveTo(0, -d * 0.4);
+        this.ctx.bezierCurveTo(-d * 0.8, -d * 1.2, -d * 1.6, -d * 0.2, 0, d * 1.25);
+        this.ctx.bezierCurveTo(d * 1.6, -d * 0.2, d * 0.8, -d * 1.2, 0, -d * 0.4);
         this.ctx.closePath();
         this.ctx.fill();
+        this.ctx.shadowBlur = 0;
+        this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.55})`;
+        this.ctx.beginPath();
+        this.ctx.arc(-d * 0.42, -d * 0.52, d * 0.26, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.restore();
       }
-      this.ctx.restore();
     }
   };
 
@@ -1111,21 +1374,26 @@
         this.hearts.push(this._generateHeart(true));
       }
     }
-    _generateHeart(randomY = false) {
-      const depth = Math.random() * 0.8 + 0.4;
+    _generateHeart(randomY = true) {
+      const depth = Math.random() * 0.7 + 0.5;
+      const w = this.width || window.innerWidth;
+      const h = this.height || window.innerHeight;
       return {
-        x: Math.random() * this.width,
-        y: randomY ? Math.random() * this.height : this.height + 20 + Math.random() * 50,
-        size: (Math.random() * 14 + 10) * depth,
-        speedY: (Math.random() * 1.2 + 0.6) * depth,
-        speedX: (Math.sin(Math.random() * Math.PI) - 0.5) * 0.5,
-        rotation: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.02,
+        baseX: Math.random() * w,
+        baseY: Math.random() * (h * 0.85),
+        size: (Math.random() * 12 + 10) * depth,
+        radiusX: Math.random() * 32 + 16,
+        radiusY: Math.random() * 28 + 14,
+        speedX: Math.random() * 0.012 + 6e-3,
+        speedY: Math.random() * 0.014 + 7e-3,
+        speedRot: Math.random() * 0.016 + 8e-3,
+        pulseSpeed: Math.random() * 0.035 + 0.02,
+        phaseX: Math.random() * Math.PI * 2,
+        phaseY: Math.random() * Math.PI * 2,
+        phaseRot: Math.random() * Math.PI * 2,
         depth,
-        alpha: Math.random() * 0.6 + 0.4,
-        hue: Math.random() > 0.3 ? 340 + Math.random() * 25 : 270 + Math.random() * 20,
-        // Pink to purple
-        wobbleOffset: Math.random() * Math.PI * 2
+        alpha: Math.random() * 0.35 + 0.45,
+        hue: Math.random() > 0.35 ? 335 + Math.random() * 25 : 275 + Math.random() * 25
       };
     }
     _createFireflies(count) {
@@ -1365,34 +1633,46 @@
     }
     _draw3DHearts() {
       for (let h of this.hearts) {
-        h.y -= h.speedY;
-        h.x += Math.sin(this.time + h.wobbleOffset) * 0.8;
-        h.rotation += h.rotSpeed;
-        const px = h.x + this.mouseX * h.depth;
-        const py = h.y + this.mouseY * h.depth;
-        this._drawSingleHeart(px, py, h.size, h.rotation, h.alpha * h.depth, h.hue);
-        if (h.y < -50) {
-          Object.assign(h, this._generateHeart(false));
-        }
+        const currentX = h.baseX + Math.sin(this.time * h.speedX + h.phaseX) * h.radiusX + Math.cos(this.time * (h.speedX * 0.5) + h.phaseY) * (h.radiusX * 0.4);
+        const currentY = h.baseY + Math.cos(this.time * h.speedY + h.phaseY) * h.radiusY + Math.sin(this.time * (h.speedY * 0.6) + h.phaseX) * (h.radiusY * 0.35);
+        const px = currentX + this.mouseX * h.depth;
+        const py = currentY + this.mouseY * h.depth;
+        const pulse = 1 + Math.sin(this.time * h.pulseSpeed + h.phaseX) * 0.16;
+        const r = h.size * pulse;
+        const rot = Math.sin(this.time * h.speedRot + h.phaseRot) * 0.28;
+        this._drawSingleHeart(px, py, r, rot, h.alpha * h.depth, h.hue);
       }
     }
     _drawSingleHeart(x, y, size, rotation, alpha, hue) {
       this.ctx.save();
       this.ctx.translate(x, y);
       this.ctx.rotate(rotation);
-      this.ctx.shadowColor = `hsla(${hue}, 100%, 65%, ${alpha})`;
-      this.ctx.shadowBlur = size * 0.8;
-      this.ctx.fillStyle = `hsla(${hue}, 100%, 68%, ${alpha})`;
+      const halo = this.ctx.createRadialGradient(0, 0, size * 0.2, 0, 0, size * 2.6);
+      halo.addColorStop(0, `hsla(${hue}, 100%, 70%, ${alpha * 0.6})`);
+      halo.addColorStop(0.5, `hsla(${hue}, 100%, 60%, ${alpha * 0.2})`);
+      halo.addColorStop(1, "transparent");
+      this.ctx.fillStyle = halo;
       this.ctx.beginPath();
-      const d = size * 0.6;
+      this.ctx.arc(0, 0, size * 2.6, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.shadowColor = `hsla(${hue}, 100%, 72%, ${alpha})`;
+      this.ctx.shadowBlur = size * 1.8;
+      const grad = this.ctx.createLinearGradient(0, -size, 0, size);
+      grad.addColorStop(0, `hsla(${hue}, 100%, 82%, ${alpha})`);
+      grad.addColorStop(0.5, `hsla(${hue}, 100%, 66%, ${alpha * 0.95})`);
+      grad.addColorStop(1, `hsla(${hue}, 95%, 48%, ${alpha * 0.9})`);
+      this.ctx.fillStyle = grad;
+      this.ctx.beginPath();
+      const d = size * 0.65;
       this.ctx.moveTo(0, -d * 0.4);
-      this.ctx.bezierCurveTo(-d * 0.8, -d * 1.2, -d * 1.6, -d * 0.2, 0, d * 1.2);
+      this.ctx.bezierCurveTo(-d * 0.8, -d * 1.2, -d * 1.6, -d * 0.2, 0, d * 1.25);
       this.ctx.bezierCurveTo(d * 1.6, -d * 0.2, d * 0.8, -d * 1.2, 0, -d * 0.4);
       this.ctx.closePath();
       this.ctx.fill();
-      this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.35})`;
+      this.ctx.shadowBlur = 0;
+      this.ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
       this.ctx.beginPath();
-      this.ctx.arc(-d * 0.4, -d * 0.5, d * 0.25, 0, Math.PI * 2);
+      this.ctx.arc(-d * 0.42, -d * 0.52, d * 0.26, 0, Math.PI * 2);
       this.ctx.fill();
       this.ctx.restore();
     }
@@ -1414,11 +1694,21 @@
     show() {
       const authScreen = document.getElementById("auth-screen");
       if (authScreen) authScreen.style.display = "flex";
+      const romanticCanvas = document.getElementById("romantic-canvas");
+      if (romanticCanvas) {
+        romanticCanvas.classList.remove("hidden");
+        romanticCanvas.style.display = "block";
+      }
       if (this.scene) this.scene.start();
     }
     hide() {
       const authScreen = document.getElementById("auth-screen");
       if (authScreen) authScreen.style.display = "none";
+      const romanticCanvas = document.getElementById("romantic-canvas");
+      if (romanticCanvas) {
+        romanticCanvas.classList.add("hidden");
+        romanticCanvas.style.display = "none";
+      }
       if (this.scene) this.scene.stop();
     }
     _bindEvents() {
@@ -1444,9 +1734,37 @@
             }
             const reader = new FileReader();
             reader.onload = (evt) => {
-              this.uploadedAvatarData = evt.target.result;
-              const previewImg = document.getElementById("signup-avatar-preview");
-              if (previewImg) previewImg.src = this.uploadedAvatarData;
+              const rawData = evt.target.result;
+              const img = new Image();
+              img.onload = () => {
+                try {
+                  const canvas = document.createElement("canvas");
+                  const maxDim = 128;
+                  let w = img.width;
+                  let h = img.height;
+                  if (w > h) {
+                    if (w > maxDim) {
+                      h = Math.round(h * maxDim / w);
+                      w = maxDim;
+                    }
+                  } else {
+                    if (h > maxDim) {
+                      w = Math.round(w * maxDim / h);
+                      h = maxDim;
+                    }
+                  }
+                  canvas.width = w;
+                  canvas.height = h;
+                  const ctx = canvas.getContext("2d");
+                  ctx.drawImage(img, 0, 0, w, h);
+                  this.uploadedAvatarData = canvas.toDataURL("image/jpeg", 0.82);
+                } catch (canvasErr) {
+                  this.uploadedAvatarData = rawData;
+                }
+                const previewImg = document.getElementById("signup-avatar-preview");
+                if (previewImg) previewImg.src = this.uploadedAvatarData;
+              };
+              img.src = rawData;
             };
             reader.readAsDataURL(file);
           }
@@ -1479,6 +1797,8 @@
           const email = document.getElementById("signup-email").value;
           const password = document.getElementById("signup-password").value;
           const confirmPassword = document.getElementById("signup-confirm-password").value;
+          const dobInput = document.getElementById("signup-dob");
+          const dob = dobInput ? dobInput.value : "";
           if (!name || !username || !email || !password) {
             toast.error("Please fill in all required fields.");
             return;
@@ -1497,9 +1817,10 @@
               username,
               email,
               password,
+              dob,
               profilePicture: this.uploadedAvatarData
             });
-            toast.success(`Account created! Your ID is ${user.userId} \u{1F389}`);
+            toast.success(`Account created! Your ID is ${user.uid || user.userId} \u{1F389}`);
             this.onAuthSuccess(user);
           } catch (err) {
             toast.error(err.message);
@@ -1509,7 +1830,7 @@
       if (forgotPassBtn) {
         forgotPassBtn.addEventListener("click", (e) => {
           e.preventDefault();
-          toast.info("Demo Account Tip: You can log in with username 'alex' and password 'password123', or create a new account!");
+          toast.info("Log in with your registered username, email, or User ID, or click Create Account to sign up!");
         });
       }
       document.querySelectorAll(".password-toggle-btn").forEach((btn) => {
@@ -1545,6 +1866,238 @@
     }
   };
 
+  // js/services/user.js
+  var UserService = class {
+    getUserById(userId) {
+      if (!userId) return null;
+      const current = auth.getCurrentUser();
+      if (userId === "CURRENT_USER" && current) {
+        return current;
+      }
+      return storage.getUserByUid(userId);
+    }
+    getAllUsers() {
+      return storage.getUsers();
+    }
+    getAllEnrolledUsers(options = {}) {
+      const current = auth.getCurrentUser();
+      const currentUid = current ? current.uid || current.userId : null;
+      let users = this.getAllUsers();
+      if (options.excludeSelf !== false && currentUid) {
+        users = users.filter((u) => (u.uid || u.userId) !== currentUid);
+      }
+      return users.map((u) => ({
+        ...u,
+        uid: u.uid || u.userId,
+        userId: u.uid || u.userId,
+        displayName: u.displayName || u.name,
+        isSelf: Boolean(currentUid && (u.uid || u.userId) === currentUid),
+        matchType: "all",
+        matchReason: currentUid && (u.uid || u.userId) === currentUid ? "Your Profile" : "Registered Member"
+      }));
+    }
+    getSuggestedUsers(limit = 20, includeSelf = false) {
+      const current = auth.getCurrentUser();
+      const currentUid = current ? current.uid || current.userId : null;
+      const users = this.getAllUsers();
+      const others = users.filter((u) => !currentUid || (u.uid || u.userId) !== currentUid).map((u) => ({
+        ...u,
+        uid: u.uid || u.userId,
+        userId: u.uid || u.userId,
+        displayName: u.displayName || u.name,
+        isSelf: false,
+        matchType: "suggestion",
+        matchReason: "Registered Member"
+      }));
+      const list = [...others];
+      if (includeSelf && currentUid && current) {
+        list.push({
+          ...current,
+          uid: current.uid || current.userId,
+          userId: current.uid || current.userId,
+          displayName: current.displayName || current.name,
+          isSelf: true,
+          matchType: "suggestion",
+          matchReason: "Your Account"
+        });
+      }
+      if (limit && limit > 0) {
+        return list.slice(0, limit);
+      }
+      return list;
+    }
+    searchUsers(query, options = {}) {
+      const rawQ = String(query || "").trim();
+      const shouldExcludeSelf = options.excludeSelf !== false;
+      if (!rawQ) {
+        if (options.includeSuggestions) {
+          return this.getSuggestedUsers(options.limit || 20, !shouldExcludeSelf);
+        }
+        return [];
+      }
+      const q = rawQ.toLowerCase();
+      const cleanUserQuery = q.replace(/^@+/, "");
+      const cleanUserQueryAlphanum = cleanUserQuery.replace(/[^a-z0-9]/g, "");
+      const cleanIdQuery = q.replace(/[^a-z0-9]/g, "");
+      const queryDigits = q.replace(/[^0-9]/g, "");
+      const nameTokens = q.split(/\s+/).filter(Boolean);
+      const current = auth.getCurrentUser();
+      const currentUid = current ? String(current.uid || current.userId || "").toUpperCase() : null;
+      const users = this.getAllUsers();
+      const results = [];
+      for (const u of users) {
+        if (!u) continue;
+        const targetUid = String(u.uid || u.userId || "").toUpperCase();
+        if (!targetUid) continue;
+        const isSelf = Boolean(currentUid && targetUid === currentUid);
+        if (shouldExcludeSelf && isSelf) continue;
+        const targetRawId = targetUid.toLowerCase();
+        const targetCleanId = targetRawId.replace(/[^a-z0-9]/g, "");
+        const targetNumId = targetRawId.replace(/[^0-9]/g, "");
+        const targetUser = String(u.username || "").toLowerCase();
+        const targetUserClean = targetUser.replace(/[^a-z0-9]/g, "");
+        const targetName = String(u.displayName || u.name || "").toLowerCase();
+        const targetEmail = String(u.email || "").toLowerCase();
+        const targetDob = String(u.dob || u.birthday || "").toLowerCase();
+        let score = 0;
+        let matchType = "";
+        let matchReason = "";
+        if (cleanIdQuery.length >= 2 || queryDigits.length >= 2) {
+          if (targetRawId === q || targetCleanId === cleanIdQuery || queryDigits.length >= 4 && targetNumId === queryDigits) {
+            score = 100;
+            matchType = "id";
+            matchReason = isSelf ? `Your User ID (${targetUid})` : `Exact User ID (${targetUid})`;
+          } else if (targetCleanId.startsWith(cleanIdQuery) || queryDigits.length >= 2 && targetNumId.startsWith(queryDigits) || targetRawId.startsWith(q)) {
+            score = 85;
+            matchType = "id";
+            matchReason = `ID starts with ${rawQ}`;
+          } else if (targetCleanId.includes(cleanIdQuery) || queryDigits.length >= 3 && targetNumId.includes(queryDigits) || targetRawId.includes(q)) {
+            score = 70;
+            matchType = "id";
+            matchReason = `ID contains ${rawQ}`;
+          }
+        }
+        if (cleanUserQuery.length >= 1) {
+          if (targetUser === cleanUserQuery || cleanUserQueryAlphanum.length >= 2 && targetUserClean === cleanUserQueryAlphanum) {
+            const userScore = 95;
+            if (userScore > score) {
+              score = userScore;
+              matchType = "username";
+              matchReason = isSelf ? `Your Username (@${u.username})` : `Exact @${u.username}`;
+            }
+          } else if (targetUser.startsWith(cleanUserQuery) || cleanUserQueryAlphanum.length >= 2 && targetUserClean.startsWith(cleanUserQueryAlphanum)) {
+            const userScore = 80;
+            if (userScore > score) {
+              score = userScore;
+              matchType = "username";
+              matchReason = `@${u.username}`;
+            }
+          } else if (targetUser.includes(cleanUserQuery) || cleanUserQueryAlphanum.length >= 2 && targetUserClean.includes(cleanUserQueryAlphanum)) {
+            const userScore = 65;
+            if (userScore > score) {
+              score = userScore;
+              matchType = "username";
+              matchReason = `@${u.username}`;
+            }
+          }
+        }
+        if (targetName === q) {
+          const nameScore = 92;
+          if (nameScore > score) {
+            score = nameScore;
+            matchType = "name";
+            matchReason = isSelf ? "Your Name" : "Exact name match";
+          }
+        } else if (targetName.startsWith(q)) {
+          const nameScore = 78;
+          if (nameScore > score) {
+            score = nameScore;
+            matchType = "name";
+            matchReason = "Name starts with";
+          }
+        } else if (nameTokens.length > 0 && nameTokens.every((tok) => targetName.includes(tok))) {
+          const nameScore = 62;
+          if (nameScore > score) {
+            score = nameScore;
+            matchType = "name";
+            matchReason = "Name match";
+          }
+        } else if (targetName.includes(q)) {
+          const nameScore = 50;
+          if (nameScore > score) {
+            score = nameScore;
+            matchType = "name";
+            matchReason = "Name contains";
+          }
+        }
+        if (targetDob && q.length >= 2) {
+          const cleanDobDigits = targetDob.replace(/[^0-9]/g, "");
+          const cleanQDigits = q.replace(/[^0-9]/g, "");
+          if (targetDob === q) {
+            const dobScore = 90;
+            if (dobScore > score) {
+              score = dobScore;
+              matchType = "dob";
+              matchReason = `Birthday: ${u.dob || u.birthday}`;
+            }
+          } else if (targetDob.includes(q)) {
+            const dobScore = 75;
+            if (dobScore > score) {
+              score = dobScore;
+              matchType = "dob";
+              matchReason = `Birthday matches ${rawQ}`;
+            }
+          } else if (cleanQDigits.length >= 2 && cleanDobDigits.includes(cleanQDigits)) {
+            const dobScore = 68;
+            if (dobScore > score) {
+              score = dobScore;
+              matchType = "dob";
+              matchReason = `Birthday (${u.dob || u.birthday})`;
+            }
+          }
+        }
+        if (targetEmail) {
+          if (targetEmail === q) {
+            const emailScore = 80;
+            if (emailScore > score) {
+              score = emailScore;
+              matchType = "email";
+              matchReason = `Email (${u.email})`;
+            }
+          } else if (targetEmail.includes(q) && q.length >= 3) {
+            const emailScore = 35;
+            if (emailScore > score) {
+              score = emailScore;
+              matchType = "email";
+              matchReason = `Email contains ${rawQ}`;
+            }
+          }
+        }
+        if (score > 0) {
+          results.push({
+            ...u,
+            uid: targetUid,
+            userId: targetUid,
+            displayName: u.displayName || u.name,
+            isSelf,
+            matchScore: score,
+            matchType,
+            matchReason
+          });
+        }
+      }
+      results.sort((a, b) => b.matchScore - a.matchScore);
+      if (options.limit && options.limit > 0) {
+        return results.slice(0, options.limit);
+      }
+      return results;
+    }
+    updateProfile(profileData) {
+      return auth.updateCurrentUser(profileData);
+    }
+  };
+  var userService = new UserService();
+
   // js/views/chatListView.js
   var ChatListView = class {
     constructor(containerId, onSelectConversation) {
@@ -1569,7 +2122,8 @@
       if (!this.container) return;
       const convs = chatService.getConversations();
       const current = auth.getCurrentUser();
-      if (convs.length === 0) {
+      const q = filter.toLowerCase().trim();
+      if (convs.length === 0 && !q) {
         this.container.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">\u2728</div>
@@ -1583,13 +2137,26 @@
         return;
       }
       this.container.innerHTML = "";
-      const q = filter.toLowerCase().trim();
+      let renderedCount = 0;
       convs.forEach((conv) => {
         const partner = userService.getUserById(conv.otherParticipantId);
         if (!partner) return;
-        if (q && !partner.name.toLowerCase().includes(q) && !partner.username.toLowerCase().includes(q)) {
-          return;
+        if (q) {
+          const cleanUserQ = q.replace(/^@+/, "");
+          const cleanIdQ = q.replace(/[^a-z0-9]/gi, "");
+          const partnerName = (partner.name || "").toLowerCase();
+          const partnerUser = (partner.username || "").toLowerCase();
+          const partnerRawId = (partner.userId || "").toLowerCase();
+          const partnerCleanId = partnerRawId.replace(/[^a-z0-9]/gi, "");
+          const partnerNumId = partnerRawId.replace(/^[^\d]+/, "");
+          const matchName = partnerName.includes(q);
+          const matchUser = cleanUserQ ? partnerUser.includes(cleanUserQ) : false;
+          const matchId = cleanIdQ.length >= 2 && (partnerCleanId.includes(cleanIdQ) || partnerNumId.includes(cleanIdQ) || partnerRawId.includes(q));
+          if (!matchName && !matchUser && !matchId) {
+            return;
+          }
         }
+        renderedCount++;
         const item = document.createElement("div");
         item.className = `chat-list-item card-3d ${conv.conversationId === this.activeConvId ? "active" : ""}`;
         let lastMsgText = "No messages yet";
@@ -1626,6 +2193,10 @@
             <span class="chat-item-name">${partner.name}</span>
             <span class="chat-item-time">${timeStr}</span>
           </div>
+          <div class="chat-item-sub">
+            <span class="chat-item-user">@${partner.username}</span>
+            <span class="chat-item-id-pill" title="User ID: ${partner.userId}">${partner.userId}</span>
+          </div>
           <div class="chat-item-bottom">
             <span class="chat-item-lastmsg ${lastMsgClass}">${lastMsgText}</span>
             ${conv.unreadCount > 0 ? `<span class="badge-count">${conv.unreadCount}</span>` : ""}
@@ -1639,8 +2210,314 @@
         });
         this.container.appendChild(item);
       });
+      if (q) {
+        const current2 = auth.getCurrentUser();
+        const currentUid = current2 ? String(current2.uid || current2.userId || "").toUpperCase() : "";
+        const matchedUsers = userService.searchUsers(q, { limit: 10, excludeSelf: true });
+        const convPartnerIds = convs.map((c) => String(c.otherParticipantId || "").toUpperCase());
+        const otherMatchedUsers = matchedUsers.filter((u) => !convPartnerIds.includes(String(u.uid || u.userId || "").toUpperCase()));
+        if (otherMatchedUsers.length > 0) {
+          const divider = document.createElement("div");
+          divider.style.cssText = "font-size: 11px; font-weight: 700; color: var(--color-romantic-rose); padding: 12px 6px 4px 6px; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; justify-content: space-between;";
+          divider.innerHTML = `<span>Registered Users (${otherMatchedUsers.length})</span><span style="font-size: 10px; color: var(--text-muted);">Click to chat</span>`;
+          this.container.appendChild(divider);
+          otherMatchedUsers.forEach((u) => {
+            const isSelf = current2 && current2.userId === u.userId;
+            const userItem = document.createElement("div");
+            userItem.className = "chat-list-item card-3d";
+            const avatar = u.profilePicture || APP_CONFIG.defaultAvatar;
+            const isOnline = u.onlineStatus === "online";
+            userItem.innerHTML = `
+            <div class="avatar-wrap">
+              <img src="${avatar}" class="avatar-img" alt="${u.name}" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+              <span class="avatar-status ${isOnline ? "online" : ""}"></span>
+            </div>
+            <div class="chat-item-info">
+              <div class="chat-item-header">
+                <span class="chat-item-name">${u.name} ${isSelf ? '<span style="font-size: 10px; padding: 1px 6px; border-radius: 6px; background: rgba(0, 230, 118, 0.2); color: var(--color-success);">You</span>' : ""}</span>
+              </div>
+              <div class="chat-item-sub">
+                <span class="chat-item-user">@${u.username}</span>
+                <span class="chat-item-id-pill" title="User ID: ${u.userId}">\u{1F194} ${u.userId}</span>
+              </div>
+            </div>
+            <div style="margin-left: auto;">
+              ${isSelf ? '<span style="font-size: 11px; color: var(--text-muted);">Profile</span>' : '<button type="button" class="btn-3d btn-primary" style="padding: 5px 12px; font-size: 11.5px;">\u{1F4AC} Chat</button>'}
+            </div>
+          `;
+            userItem.addEventListener("click", () => {
+              if (isSelf) {
+                if (window.ymApp) window.ymApp.switchView("profile");
+                return;
+              }
+              const conv = chatService.getOrCreateConversation(u.userId);
+              if (this.onSelectConversation) {
+                this.onSelectConversation(conv.conversationId);
+              }
+            });
+            this.container.appendChild(userItem);
+          });
+        }
+        if (renderedCount === 0 && otherMatchedUsers.length === 0) {
+          this.container.innerHTML = `
+          <div class="empty-state" style="padding: 24px 14px;">
+            <div class="empty-state-icon" style="width: 48px; height: 48px; font-size: 22px;">\u{1F50D}</div>
+            <div class="empty-state-title" style="font-size: 15px;">No user found</div>
+            <div class="empty-state-text" style="font-size: 12.5px;">
+              No registered user found for "<strong>${q}</strong>". Check the spelling of username, name, or User ID.
+            </div>
+          </div>
+        `;
+        }
+      }
     }
   };
+
+  // js/services/translation.js
+  var TranslationService = class {
+    constructor() {
+      this.customEndpoint = null;
+      this._initDictionary();
+    }
+    _initDictionary() {
+      this.phraseMapEnToHi = {
+        "hello": "\u0928\u092E\u0938\u094D\u0924\u0947",
+        "hi": "\u0928\u092E\u0938\u094D\u0924\u0947",
+        "hey": "\u0905\u0930\u0947 \u0938\u0941\u0928\u094B",
+        "good morning": "\u0936\u0941\u092D \u092A\u094D\u0930\u092D\u093E\u0924 \u2600\uFE0F",
+        "good afternoon": "\u0936\u0941\u092D \u0926\u094B\u092A\u0939\u0930 \u2600\uFE0F",
+        "good evening": "\u0936\u0941\u092D \u0938\u0902\u0927\u094D\u092F\u093E \u{1F319}",
+        "good night": "\u0936\u0941\u092D \u0930\u093E\u0924\u094D\u0930\u093F \u2728",
+        "how are you": "\u0906\u092A \u0915\u0948\u0938\u0947 \u0939\u0948\u0902?",
+        "how are you?": "\u0906\u092A \u0915\u0948\u0938\u0947 \u0939\u0948\u0902?",
+        "how r u": "\u0906\u092A \u0915\u0948\u0938\u0947 \u0939\u0948\u0902?",
+        "how r u?": "\u0906\u092A \u0915\u0948\u0938\u0947 \u0939\u0948\u0902?",
+        "i am good": "\u092E\u0948\u0902 \u0920\u0940\u0915 \u0939\u0942\u0901",
+        "i am fine": "\u092E\u0948\u0902 \u092C\u093F\u0932\u094D\u0915\u0941\u0932 \u0920\u0940\u0915 \u0939\u0942\u0901",
+        "i am doing great": "\u092E\u0948\u0902 \u092C\u0939\u0941\u0924 \u0905\u091A\u094D\u091B\u093E \u0915\u0930 \u0930\u0939\u093E \u0939\u0942\u0901",
+        "what are you doing": "\u0906\u092A \u0915\u094D\u092F\u093E \u0915\u0930 \u0930\u0939\u0947 \u0939\u0948\u0902?",
+        "what are you doing?": "\u0906\u092A \u0915\u094D\u092F\u093E \u0915\u0930 \u0930\u0939\u0947 \u0939\u0948\u0902?",
+        "where are you": "\u0906\u092A \u0915\u0939\u093E\u0901 \u0939\u0948\u0902?",
+        "where are you?": "\u0906\u092A \u0915\u0939\u093E\u0901 \u0939\u0948\u0902?",
+        "thank you": "\u0927\u0928\u094D\u092F\u0935\u093E\u0926 \u{1F64F}",
+        "thanks": "\u0927\u0928\u094D\u092F\u0935\u093E\u0926 \u{1F64F}",
+        "thank you so much": "\u092C\u0939\u0941\u0924-\u092C\u0939\u0941\u0924 \u0927\u0928\u094D\u092F\u0935\u093E\u0926 \u{1F64F}",
+        "welcome": "\u0906\u092A\u0915\u093E \u0938\u094D\u0935\u093E\u0917\u0924 \u0939\u0948",
+        "you are welcome": "\u0915\u094B\u0908 \u092C\u093E\u0924 \u0928\u0939\u0940\u0902, \u0906\u092A\u0915\u093E \u0938\u094D\u0935\u093E\u0917\u0924 \u0939\u0948",
+        "yes": "\u0939\u093E\u0901",
+        "no": "\u0928\u0939\u0940\u0902",
+        "ok": "\u0920\u0940\u0915 \u0939\u0948",
+        "okay": "\u0920\u0940\u0915 \u0939\u0948",
+        "sure": "\u091C\u093C\u0930\u0942\u0930",
+        "of course": "\u092C\u093F\u0932\u094D\u0915\u0941\u0932",
+        "please": "\u0915\u0943\u092A\u092F\u093E",
+        "sorry": "\u092E\u093E\u092B\u093C \u0915\u0940\u091C\u093F\u090F",
+        "bye": "\u0905\u0932\u0935\u093Fida",
+        "goodbye": "\u0905\u0932\u0935\u093F\u0926\u093E",
+        "see you": "\u092B\u093F\u0930 \u092E\u093F\u0932\u0947\u0902\u0917\u0947",
+        "see you soon": "\u091C\u0932\u094D\u0926 \u092E\u093F\u0932\u0947\u0902\u0917\u0947 \u2728",
+        "take care": "\u0905\u092A\u0928\u093E \u0916\u094D\u092F\u093E\u0932 \u0930\u0916\u0928\u093E",
+        "love you": "\u092A\u094D\u092F\u093E\u0930 \u0915\u0930\u0924\u093E \u0939\u0942\u0901 \u2764\uFE0F",
+        "i love you": "\u092E\u0948\u0902 \u0906\u092A\u0938\u0947 \u092A\u094D\u092F\u093E\u0930 \u0915\u0930\u0924\u093E \u0939\u0942\u0901 \u2764\uFE0F",
+        "happy birthday": "\u091C\u0928\u094D\u092E\u0926\u093F\u0928 \u092E\u0941\u092C\u093E\u0930\u0915 \u0939\u094B \u{1F382}",
+        "congratulations": "\u092C\u0927\u093E\u0908 \u0939\u094B \u{1F389}",
+        "awesome": "\u092C\u0939\u0941\u0924 \u092C\u0922\u093C\u093F\u092F\u093E!",
+        "nice": "\u0905\u091A\u094D\u091B\u093E \u0939\u0948",
+        "great": "\u0936\u093E\u0928\u0926\u093E\u0930",
+        "cool": "\u092C\u0939\u0941\u0924 \u0916\u0942\u092C",
+        "beautiful": "\u0938\u0941\u0902\u0926\u0930",
+        "let's chat": "\u091A\u0932\u094B \u092C\u093E\u0924 \u0915\u0930\u0924\u0947 \u0939\u0948\u0902",
+        "call me": "\u092E\u0941\u091D\u0947 \u0915\u0949\u0932 \u0915\u0930\u0947\u0902",
+        "message me": "\u092E\u0941\u091D\u0947 \u092E\u0948\u0938\u0947\u091C \u0915\u0930\u0947\u0902",
+        "are you free": "\u0915\u094D\u092F\u093E \u0906\u092A \u0916\u093E\u0932\u0940 \u0939\u0948\u0902?",
+        "are you free?": "\u0915\u094D\u092F\u093E \u0906\u092A \u092B\u094D\u0930\u0940 \u0939\u0948\u0902?",
+        "what happened": "\u0915\u094D\u092F\u093E \u0939\u0941\u0906?",
+        "what happened?": "\u0915\u094D\u092F\u093E \u0939\u0941\u0906?",
+        "all good": "\u0938\u092C \u0920\u0940\u0915 \u0939\u0948",
+        "no problem": "\u0915\u094B\u0908 \u092C\u093E\u0924 \u0928\u0939\u0940\u0902",
+        "i am happy": "\u092E\u0948\u0902 \u0916\u0941\u0936 \u0939\u0942\u0901",
+        "nice to meet you": "\u0906\u092A\u0938\u0947 \u092E\u093F\u0932\u0915\u0930 \u0905\u091A\u094D\u091B\u093E \u0932\u0917\u093E"
+      };
+      this.phraseMapHiToEn = {};
+      Object.entries(this.phraseMapEnToHi).forEach(([en, hi]) => {
+        const cleanHi = hi.replace(/[?☀️🌙✨🙏❤️🎂🎉!]/g, "").trim();
+        this.phraseMapHiToEn[cleanHi.toLowerCase()] = en;
+        this.phraseMapHiToEn[hi.toLowerCase()] = en;
+      });
+      this.wordsEnToHi = {
+        "friend": "\u0926\u094B\u0938\u094D\u0924",
+        "friends": "\u0926\u094B\u0938\u094D\u0924",
+        "love": "\u092A\u094D\u092F\u093E\u0930",
+        "happy": "\u0916\u0941\u0936",
+        "today": "\u0906\u091C",
+        "tomorrow": "\u0915\u0932",
+        "yesterday": "\u0915\u0932",
+        "now": "\u0905\u092D\u0940",
+        "chat": "\u092C\u093E\u0924\u091A\u0940\u0924",
+        "message": "\u0938\u0902\u0926\u0947\u0936",
+        "photo": "\u0924\u0938\u094D\u0935\u0940\u0930",
+        "image": "\u0924\u0938\u094D\u0935\u0940\u0930",
+        "video": "\u0935\u0940\u0921\u093F\u092F\u094B",
+        "file": "\u092B\u093C\u093E\u0907\u0932",
+        "together": "\u0938\u093E\u0925 \u092E\u0947\u0902",
+        "work": "\u0915\u093E\u092E",
+        "home": "\u0918\u0930",
+        "good": "\u0905\u091A\u094D\u091B\u093E",
+        "bad": "\u092C\u0941\u0930\u093E",
+        "beautiful": "\u0916\u0942\u092C\u0938\u0942\u0930\u0924",
+        "life": "\u091C\u093F\u0902\u0926\u0917\u0940",
+        "time": "\u0938\u092E\u092F",
+        "day": "\u0926\u093F\u0928",
+        "night": "\u0930\u093E\u0924",
+        "sun": "\u0938\u0942\u0930\u091C",
+        "moon": "\u091A\u093E\u0901\u0926",
+        "star": "\u0924\u093E\u0930\u093E",
+        "heart": "\u0926\u093F\u0932",
+        "music": "\u0938\u0902\u0917\u0940\u0924"
+      };
+      this.wordsHiToEn = {};
+      Object.entries(this.wordsEnToHi).forEach(([en, hi]) => {
+        this.wordsHiToEn[hi] = en;
+      });
+    }
+    isHindi(text) {
+      if (!text) return false;
+      return /[\u0900-\u097F]/.test(text);
+    }
+    getUserPreferredLanguage() {
+      const user = auth.getCurrentUser();
+      if (user && user.language) {
+        return user.language;
+      }
+      return "English";
+    }
+    async translate(text, targetLang = null) {
+      if (!text || typeof text !== "string") {
+        return { text: "", isTranslated: false };
+      }
+      const trimmed = text.trim();
+      if (!trimmed) return { text: "", isTranslated: false };
+      const isSourceHindi = this.isHindi(trimmed);
+      let target = targetLang;
+      if (!target) {
+        target = isSourceHindi ? "English" : "Hindi";
+      }
+      if (target === "Hindi" && isSourceHindi) {
+        return { text: trimmed, isTranslated: false, targetLang: "Hindi" };
+      }
+      if (target === "English" && !isSourceHindi && !/[^\x00-\x7F]/.test(trimmed)) {
+        return { text: trimmed, isTranslated: false, targetLang: "English" };
+      }
+      if (this.customEndpoint) {
+        try {
+          const res = await fetch(this.customEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ q: trimmed, target: target === "Hindi" ? "hi" : "en" })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.translatedText) {
+              return {
+                text: data.translatedText,
+                originalText: trimmed,
+                isTranslated: true,
+                targetLang: target
+              };
+            }
+          }
+        } catch (e) {
+          console.warn("[TranslationService] External endpoint failed, falling back to local engine:", e);
+        }
+      }
+      const lower = trimmed.toLowerCase();
+      if (target === "Hindi") {
+        if (this.phraseMapEnToHi[lower]) {
+          return {
+            text: this.phraseMapEnToHi[lower],
+            originalText: trimmed,
+            isTranslated: true,
+            targetLang: "Hindi"
+          };
+        }
+        const cleanLower = lower.replace(/[!?.,]/g, "").trim();
+        if (this.phraseMapEnToHi[cleanLower]) {
+          return {
+            text: this.phraseMapEnToHi[cleanLower],
+            originalText: trimmed,
+            isTranslated: true,
+            targetLang: "Hindi"
+          };
+        }
+        const words = trimmed.split(/(\s+|[.,!?])/);
+        let translatedAny = false;
+        const translatedWords = words.map((word) => {
+          const wLower = word.toLowerCase();
+          if (this.wordsEnToHi[wLower]) {
+            translatedAny = true;
+            return this.wordsEnToHi[wLower];
+          }
+          return word;
+        });
+        if (translatedAny) {
+          return {
+            text: translatedWords.join(""),
+            originalText: trimmed,
+            isTranslated: true,
+            targetLang: "Hindi"
+          };
+        }
+        return {
+          text: `[\u0905\u0928\u0941\u0935\u093E\u0926] ${trimmed}`,
+          originalText: trimmed,
+          isTranslated: true,
+          targetLang: "Hindi"
+        };
+      } else {
+        if (this.phraseMapHiToEn[lower]) {
+          return {
+            text: this.phraseMapHiToEn[lower],
+            originalText: trimmed,
+            isTranslated: true,
+            targetLang: "English"
+          };
+        }
+        const cleanLower = lower.replace(/[!?.,|।]/g, "").trim();
+        if (this.phraseMapHiToEn[cleanLower]) {
+          return {
+            text: this.phraseMapHiToEn[cleanLower],
+            originalText: trimmed,
+            isTranslated: true,
+            targetLang: "English"
+          };
+        }
+        const words = trimmed.split(/(\s+|[.,!?|।])/);
+        let translatedAny = false;
+        const translatedWords = words.map((word) => {
+          if (this.wordsHiToEn[word]) {
+            translatedAny = true;
+            return this.wordsHiToEn[word];
+          }
+          return word;
+        });
+        if (translatedAny) {
+          return {
+            text: translatedWords.join(""),
+            originalText: trimmed,
+            isTranslated: true,
+            targetLang: "English"
+          };
+        }
+        return {
+          text: `[Translated] ${trimmed}`,
+          originalText: trimmed,
+          isTranslated: true,
+          targetLang: "English"
+        };
+      }
+    }
+  };
+  var translationService = new TranslationService();
 
   // js/components/modal.js
   var ModalService = class {
@@ -1908,6 +2785,7 @@
       this.replyTargetMessage = null;
       this.activeContextMenu = null;
       this.emojiPicker = null;
+      this.translatedMessages = /* @__PURE__ */ new Map();
       this.container = document.getElementById("chat-screen");
       this.messagesContainer = document.getElementById("chat-messages");
       this.composerTextarea = document.getElementById("composer-textarea");
@@ -1934,11 +2812,15 @@
       if (!conv) return;
       const partner = userService.getUserById(conv.otherParticipantId);
       if (!partner) return;
-      document.getElementById("chat-header-avatar").src = partner.profilePicture;
-      document.getElementById("chat-header-name").textContent = partner.name;
+      const avatarEl = document.getElementById("chat-header-avatar");
+      if (avatarEl) avatarEl.src = partner.profilePicture || partner.avatar;
+      const nameEl = document.getElementById("chat-header-name");
+      if (nameEl) nameEl.textContent = partner.name;
       const statusEl = document.getElementById("chat-header-status");
-      statusEl.textContent = partner.onlineStatus === "online" ? "Online" : `Last seen ${partner.lastSeen || "recently"}`;
-      statusEl.className = `chat-header-status ${partner.onlineStatus === "online" ? "online" : ""}`;
+      if (statusEl) {
+        statusEl.textContent = partner.onlineStatus === "online" ? "Online" : `Last seen ${partner.lastSeen || "recently"}`;
+        statusEl.className = `chat-header-status ${partner.onlineStatus === "online" ? "online" : ""}`;
+      }
       this.cancelReply();
       this.closeSearch();
       this.renderMessages();
@@ -1946,6 +2828,32 @@
       document.querySelector(".app-main-view")?.classList.add("chat-open");
       document.querySelector(".app-dashboard")?.classList.add("in-chat");
       this.scrollToBottom();
+    }
+    closeSearch() {
+      if (this.searchBar) {
+        this.searchBar.classList.remove("active");
+        this.searchBar.style.display = "none";
+      }
+      const searchInput = document.getElementById("chat-search-input");
+      if (searchInput) {
+        searchInput.value = "";
+      }
+    }
+    toggleSearch() {
+      if (!this.searchBar) return;
+      const isVisible = this.searchBar.classList.contains("active") || this.searchBar.style.display === "flex";
+      const searchInput = document.getElementById("chat-search-input");
+      if (isVisible) {
+        this.closeSearch();
+        this.renderMessages("");
+      } else {
+        this.searchBar.classList.add("active");
+        this.searchBar.style.display = "flex";
+        if (searchInput) {
+          searchInput.value = "";
+          searchInput.focus();
+        }
+      }
     }
     closeConversation() {
       this.currentConvId = null;
@@ -1965,12 +2873,21 @@
       const conv = chatService.getConversationById(this.currentConvId);
       if (!conv) return;
       const current = auth.getCurrentUser();
+      const currentUid = current ? String(current.uid || current.userId || "").toUpperCase() : "";
       this.messagesContainer.innerHTML = "";
       let lastSenderId = null;
       let lastDateStr = null;
       conv.messages.forEach((msg) => {
-        if (msg.deletedFor && msg.deletedFor.includes(current.userId)) {
+        if (msg.deletedFor && msg.deletedFor.map((id) => String(id).toUpperCase()).includes(currentUid)) {
           return;
+        }
+        if (searchQuery) {
+          const textToMatch = String(msg.text || "").toLowerCase();
+          const fileNameToMatch = String(msg.fileName || "").toLowerCase();
+          const q = searchQuery.toLowerCase();
+          if (!textToMatch.includes(q) && !fileNameToMatch.includes(q)) {
+            return;
+          }
         }
         const msgDate = new Date(msg.timestamp);
         const dateStr = this._formatDateSeparator(msgDate);
@@ -1981,7 +2898,7 @@
           this.messagesContainer.appendChild(sep);
           lastDateStr = dateStr;
         }
-        const isOutgoing = msg.senderId === current.userId;
+        const isOutgoing = String(msg.senderId).toUpperCase() === currentUid;
         const isConsecutive = lastSenderId === msg.senderId;
         lastSenderId = msg.senderId;
         const row = document.createElement("div");
@@ -1992,7 +2909,7 @@
           contentHtml += `
           <div class="quoted-message-box" data-reply-to-id="${msg.replyTo.id}">
             <div class="quoted-sender">${msg.replyTo.senderName}</div>
-            <div class="quoted-text">${msg.replyTo.text}</div>
+            <div class="quoted-text">${this._escapeHtml(msg.replyTo.text)}</div>
           </div>
         `;
         }
@@ -2003,14 +2920,14 @@
           <div class="message-image-wrap" data-img-url="${msg.mediaUrl}">
             <img src="${msg.mediaUrl}" alt="Photo message" />
           </div>
-          ${msg.text ? `<div style="margin-top:6px;">${msg.text}</div>` : ""}
+          ${msg.text ? `<div style="margin-top:6px;">${this._formatFormattedText(msg.text, searchQuery)}</div>` : ""}
         `;
         } else if (msg.type === "video") {
           contentHtml += `
           <div class="message-video-wrap">
-            <video src="${msg.mediaUrl}" controls></video>
+            <video src="${msg.mediaUrl}" controls style="max-width: 100%; border-radius: 12px;"></video>
           </div>
-          ${msg.text ? `<div style="margin-top:6px;">${msg.text}</div>` : ""}
+          ${msg.text ? `<div style="margin-top:6px;">${this._formatFormattedText(msg.text, searchQuery)}</div>` : ""}
         `;
         } else if (msg.type === "file") {
           contentHtml += `
@@ -2019,11 +2936,11 @@
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
             </div>
             <div class="message-file-details">
-              <div class="message-file-name">${msg.fileName || "Document"}</div>
-              <div class="message-file-size">${msg.fileSize || "File"}</div>
+              <div class="message-file-name">${this._escapeHtml(msg.fileName || "Document")}</div>
+              <div class="message-file-size">${this._escapeHtml(msg.fileSize || "File")}</div>
             </div>
           </a>
-          ${msg.text ? `<div style="margin-top:4px;">${msg.text}</div>` : ""}
+          ${msg.text ? `<div style="margin-top:4px;">${this._formatFormattedText(msg.text, searchQuery)}</div>` : ""}
         `;
         } else {
           const isEmojiOnly = this._isOnlyEmojis(msg.text);
@@ -2031,12 +2948,24 @@
             row.classList.add("emoji-row");
             contentHtml += `<div class="message-bubble emoji-only">${msg.text}</div>`;
           } else {
-            let text = msg.text;
-            if (searchQuery && text.toLowerCase().includes(searchQuery.toLowerCase())) {
-              const regex = new RegExp(`(${searchQuery})`, "gi");
-              text = text.replace(regex, `<mark style="background:var(--color-romantic-pink); color:#fff; border-radius:3px; padding:0 2px;">$1</mark>`);
+            const translation = this.translatedMessages.get(msg.id);
+            const activeText = translation ? translation.text : msg.text;
+            const formatted = this._formatFormattedText(activeText, searchQuery);
+            contentHtml += `<div>${formatted}</div>`;
+            if (translation) {
+              contentHtml += `
+              <div class="translation-toggle-bar" data-msg-id="${msg.id}" style="font-size: 11px; color: var(--color-cyan-accent); margin-top: 5px; cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none;">
+                <span>\u{1F310} Translated to ${translation.targetLang}</span>
+                <span style="opacity: 0.8; text-decoration: underline;">(Show Original)</span>
+              </div>
+            `;
+            } else if (!isOutgoing && msg.text && msg.text.length > 1) {
+              contentHtml += `
+              <div class="quick-translate-btn" data-msg-id="${msg.id}" style="font-size: 10.5px; opacity: 0.6; margin-top: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; user-select: none;">
+                <span>\u{1F310} Translate</span>
+              </div>
+            `;
             }
-            contentHtml += `<div>${text}</div>`;
           }
         }
         const timeStr = msgDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -2066,7 +2995,7 @@
           const reactionsBar = document.createElement("div");
           reactionsBar.className = "message-reactions";
           msg.reactions.forEach((r) => {
-            const isReactedByMe = r.userIds.includes(current.userId);
+            const isReactedByMe = r.userIds.map((id) => String(id).toUpperCase()).includes(currentUid);
             const pill = document.createElement("span");
             pill.className = `reaction-pill ${isReactedByMe ? "reacted-by-me" : ""}`;
             pill.innerHTML = `${r.emoji} <span style="font-size:11px; opacity:0.85;">${r.userIds.length}</span>`;
@@ -2093,43 +3022,119 @@
             const targetRow = this.messagesContainer.querySelector(`[data-msg-id="${targetId}"]`);
             if (targetRow) {
               targetRow.scrollIntoView({ behavior: "smooth", block: "center" });
-              targetRow.style.filter = "brightness(1.5)";
-              setTimeout(() => targetRow.style.filter = "", 1e3);
+              targetRow.classList.add("highlight-pulse");
+              setTimeout(() => targetRow.classList.remove("highlight-pulse"), 1200);
             }
           });
         }
-        const bubble = row.querySelector(".message-bubble") || row;
-        bubble.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          this._showContextMenu(e, msg, isOutgoing);
-        });
+        const quickTransBtn = row.querySelector(".quick-translate-btn");
+        if (quickTransBtn) {
+          quickTransBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.translateMessage(msg.id, msg.text);
+          });
+        }
+        const transToggleBar = row.querySelector(".translation-toggle-bar");
+        if (transToggleBar) {
+          transToggleBar.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.translatedMessages.delete(msg.id);
+            this.renderMessages(searchQuery);
+          });
+        }
+        const bubble = row.querySelector(".message-bubble");
+        if (bubble) {
+          bubble.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            this._showContextMenu(e, msg, isOutgoing);
+          });
+          let pressTimer;
+          bubble.addEventListener("touchstart", (e) => {
+            pressTimer = setTimeout(() => {
+              const touch = e.touches[0];
+              this._showContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, msg, isOutgoing);
+            }, 500);
+          }, { passive: true });
+          bubble.addEventListener("touchend", () => clearTimeout(pressTimer));
+          bubble.addEventListener("touchmove", () => clearTimeout(pressTimer));
+        }
         this.messagesContainer.appendChild(row);
       });
-      if (this.typingRow) {
-        this.messagesContainer.appendChild(this.typingRow);
+      if (searchQuery && this.messagesContainer.children.length === 0) {
+        this.messagesContainer.innerHTML = `
+        <div class="empty-state" style="padding: 40px 20px;">
+          <div class="empty-state-icon">\u{1F50D}</div>
+          <div class="empty-state-title">No messages found</div>
+          <div class="empty-state-text">No messages matching "<strong>${this._escapeHtml(searchQuery)}</strong>" in this chat.</div>
+        </div>
+      `;
       }
+    }
+    async translateMessage(msgId, text) {
+      if (!msgId || !text) return;
+      try {
+        const userLang = translationService.getUserPreferredLanguage();
+        const targetLang = userLang === "Hindi" ? "Hindi" : "English";
+        const result = await translationService.translate(text, targetLang);
+        if (result.isTranslated) {
+          this.translatedMessages.set(msgId, {
+            text: result.text,
+            originalText: text,
+            targetLang: result.targetLang
+          });
+          this.renderMessages();
+          toast.info(`Translated to ${result.targetLang} \u{1F310}`);
+        } else {
+          toast.info("Message is already in the preferred language.");
+        }
+      } catch (e) {
+        toast.error("Translation unavailable.");
+      }
+    }
+    _formatFormattedText(text, searchQuery = "") {
+      if (!text) return "";
+      let escaped = this._escapeHtml(text);
+      escaped = escaped.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
+      escaped = escaped.replace(/(^|[^*])\*(?!\s)([^*]+)(?!\s)\*(?=[^*]|$)/g, "$1<strong>$2</strong>");
+      escaped = escaped.replace(/(^|[^_])_(?!\s)([^_]+)(?!\s)_(?=[^_]|$)/g, "$1<em>$2</em>");
+      escaped = escaped.replace(/(^|[^~])~(?!\s)([^~]+)(?!\s)~(?=[^~]|$)/g, "$1<del>$2</del>");
+      escaped = escaped.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.25); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); font-size:0.9em;">$1</code>');
+      escaped = escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--color-cyan-accent); text-decoration:underline;">$1</a>');
+      if (searchQuery) {
+        const cleanQ = this._escapeHtml(searchQuery);
+        try {
+          const regex = new RegExp(`(${cleanQ})`, "gi");
+          escaped = escaped.replace(regex, `<mark style="background:var(--color-romantic-pink); color:#fff; border-radius:3px; padding:0 2px;">$1</mark>`);
+        } catch (e) {
+        }
+      }
+      return escaped;
     }
     _showContextMenu(e, msg, isOutgoing) {
       this._closeContextMenu();
       const menu = document.createElement("div");
-      menu.className = "message-context-menu active";
-      const quickReacts = ["\u2764\uFE0F", "\u{1F602}", "\u{1F44D}", "\u{1F62E}", "\u{1F622}", "\u{1F525}", "\u{1F44F}"];
-      let reactDockHtml = `<div style="display:flex; gap:6px; padding:4px 6px; border-bottom:1px solid var(--glass-border); margin-bottom:4px;">`;
-      quickReacts.forEach((emoji) => {
-        reactDockHtml += `<span class="quick-react-btn" data-emoji="${emoji}">${emoji}</span>`;
-      });
-      reactDockHtml += `</div>`;
+      menu.className = "message-context-menu card-3d";
+      const reactions = ["\u2764\uFE0F", "\u{1F602}", "\u{1F44D}", "\u{1F62E}", "\u{1F622}", "\u{1F525}", "\u{1F44F}"];
       menu.innerHTML = `
-      ${reactDockHtml}
+      <div class="quick-reactions-dock">
+        ${reactions.map((r) => `<button class="quick-react-btn" data-emoji="${r}">${r}</button>`).join("")}
+      </div>
+      <div class="context-menu-divider"></div>
       <div class="context-menu-item" data-action="reply">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
         Reply
       </div>
-      <div class="context-menu-item" data-action="copy">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-        Copy Text
-      </div>
-      <div class="context-menu-item" data-action="delete-me">
+      ${msg.text ? `
+        <div class="context-menu-item" data-action="translate">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Translate (Hindi/English)
+        </div>
+        <div class="context-menu-item" data-action="copy">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          Copy Text
+        </div>
+      ` : ""}
+      <div class="context-menu-item danger" data-action="delete-me">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         Delete for me
       </div>
@@ -2141,7 +3146,7 @@
       ` : ""}
     `;
       const x = Math.min(window.innerWidth - 200, Math.max(10, e.clientX || 50));
-      const y = Math.min(window.innerHeight - 240, Math.max(10, e.clientY || 50));
+      const y = Math.min(window.innerHeight - 260, Math.max(10, e.clientY || 50));
       menu.style.left = `${x}px`;
       menu.style.top = `${y}px`;
       menu.querySelectorAll(".quick-react-btn").forEach((btn) => {
@@ -2152,6 +3157,10 @@
       });
       menu.querySelector('[data-action="reply"]')?.addEventListener("click", () => {
         this.startReply(msg);
+        this._closeContextMenu();
+      });
+      menu.querySelector('[data-action="translate"]')?.addEventListener("click", () => {
+        this.translateMessage(msg.id, msg.text);
         this._closeContextMenu();
       });
       menu.querySelector('[data-action="copy"]')?.addEventListener("click", () => {
@@ -2207,7 +3216,8 @@
     }
     startReply(msg) {
       const current = auth.getCurrentUser();
-      const isMe = msg.senderId === current.userId;
+      const currentUid = current ? String(current.uid || current.userId || "") : "";
+      const isMe = String(msg.senderId).toUpperCase() === currentUid.toUpperCase();
       const senderName = isMe ? "You" : document.getElementById("chat-header-name")?.textContent || "Friend";
       this.replyTargetMessage = {
         id: msg.id,
@@ -2249,13 +3259,38 @@
       document.getElementById("cancel-reply-btn")?.addEventListener("click", () => {
         this.cancelReply();
       });
+      const searchToggleBtn = document.getElementById("chat-search-toggle-btn");
+      const searchInput = document.getElementById("chat-search-input");
+      const searchCloseBtn = document.getElementById("chat-search-close-btn");
+      if (searchToggleBtn) {
+        searchToggleBtn.addEventListener("click", () => {
+          this.toggleSearch();
+        });
+      }
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          this.renderMessages(e.target.value.trim());
+        });
+        searchInput.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            this.closeSearch();
+            this.renderMessages("");
+          }
+        });
+      }
+      if (searchCloseBtn) {
+        searchCloseBtn.addEventListener("click", () => {
+          this.closeSearch();
+          this.renderMessages("");
+        });
+      }
       document.getElementById("composer-send-btn")?.addEventListener("click", () => {
         this.sendCurrentTextMessage();
       });
       if (this.composerTextarea) {
         this.composerTextarea.addEventListener("input", () => this._autoGrowTextarea());
         this.composerTextarea.addEventListener("keydown", (e) => {
-          const settings = storage.get("settings") || {};
+          const settings = storage.get("app_settings") || {};
           const enterToSend = settings.enterToSend !== false;
           if (enterToSend && e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -2277,6 +3312,11 @@
         fileInput.addEventListener("change", async (e) => {
           const file = e.target.files[0];
           if (!file) return;
+          if (file.size > 1.8 * 1024 * 1024) {
+            toast.error("This file is too large to store locally.");
+            fileInput.value = "";
+            return;
+          }
           let type = "file";
           if (file.type.startsWith("image/")) type = "image";
           else if (file.type.startsWith("video/")) type = "video";
@@ -2285,18 +3325,22 @@
             const dataUrl = evt.target.result;
             const result = await mediaPreview.show({ file, dataUrl, type });
             if (result.confirmed) {
-              const sentMsg = chatService.sendMessage(this.currentConvId, {
-                type,
-                text: result.caption || "",
-                mediaUrl: dataUrl,
-                fileName: file.name,
-                fileSize: `${(file.size / 1024).toFixed(1)} KB`,
-                replyTo: this.replyTargetMessage
-              });
-              this.cancelReply();
-              this.renderMessages();
-              this.scrollToBottom();
-              realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+              try {
+                const sentMsg = chatService.sendMessage(this.currentConvId, {
+                  type,
+                  text: result.caption || "",
+                  mediaUrl: dataUrl,
+                  fileName: file.name,
+                  fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+                  replyTo: this.replyTargetMessage
+                });
+                this.cancelReply();
+                this.renderMessages();
+                this.scrollToBottom();
+                realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+              } catch (err) {
+                toast.error(err.message || "This file is too large to store locally.");
+              }
             }
             fileInput.value = "";
           };
@@ -2316,39 +3360,25 @@
         toast.info("\u{1F4DE} Secure 3D voice call feature ready for WebRTC connection!");
       });
     }
-    toggleSearch() {
-      if (this.searchBar) {
-        const isActive = this.searchBar.classList.toggle("active");
-        if (isActive) {
-          document.getElementById("chat-search-input")?.focus();
-        } else {
-          this.renderMessages();
-        }
-      }
-    }
-    closeSearch() {
-      if (this.searchBar) {
-        this.searchBar.classList.remove("active");
-        const input = document.getElementById("chat-search-input");
-        if (input) input.value = "";
-        this.renderMessages();
-      }
-    }
     sendCurrentTextMessage() {
       if (!this.composerTextarea || !this.currentConvId) return;
       const text = this.composerTextarea.value.trim();
       if (!text) return;
-      const sentMsg = chatService.sendMessage(this.currentConvId, {
-        type: "text",
-        text,
-        replyTo: this.replyTargetMessage
-      });
-      this.composerTextarea.value = "";
-      this._autoGrowTextarea();
-      this.cancelReply();
-      this.renderMessages();
-      this.scrollToBottom();
-      realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+      try {
+        const sentMsg = chatService.sendMessage(this.currentConvId, {
+          type: "text",
+          text,
+          replyTo: this.replyTargetMessage
+        });
+        this.composerTextarea.value = "";
+        this._autoGrowTextarea();
+        this.cancelReply();
+        this.renderMessages();
+        this.scrollToBottom();
+        realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+      } catch (err) {
+        toast.error(err.message || "Failed to send message.");
+      }
     }
     _autoGrowTextarea() {
       if (!this.composerTextarea) return;
@@ -2370,131 +3400,251 @@
       const emojiRegex = /^(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|\u{FE0F})+$/u;
       return emojiRegex.test(clean);
     }
+    _escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
   };
 
   // js/services/friend.js
   var FriendService = class {
     _getFriendships() {
-      return storage.get("friendships") || [];
+      return storage.get("app_friendships") || [];
     }
     _saveFriendships(list) {
-      storage.set("friendships", list);
+      storage.set("app_friendships", list);
     }
-    _resolveId(id) {
+    _getRequests() {
+      return storage.get("app_friend_requests") || [];
+    }
+    _saveRequests(list) {
+      storage.set("app_friend_requests", list);
+    }
+    _getCurrentUid() {
       const current = auth.getCurrentUser();
-      if (id === "CURRENT_USER" && current) return current.userId;
-      return id;
+      return current ? current.uid || current.userId : null;
     }
     getFriendshipStatus(targetUserId) {
-      const current = auth.getCurrentUser();
-      if (!current || !targetUserId) return "none";
-      if (current.userId === targetUserId) return "self";
-      const list = this._getFriendships();
-      const match = list.find(
-        (f) => this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === targetUserId || this._resolveId(f.user2) === current.userId && this._resolveId(f.user1) === targetUserId
-      );
-      if (!match) return "none";
-      if (match.status === "accepted") return "friends";
-      if (match.status === "pending") {
-        return this._resolveId(match.user1) === current.userId ? "request_sent" : "request_received";
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !targetUserId) return "none";
+      if (currentUid.toUpperCase() === String(targetUserId).toUpperCase()) return "self";
+      const friendships = this._getFriendships();
+      const isFriend = friendships.some((f) => {
+        if (f.status !== "accepted") return false;
+        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+        const target2 = String(targetUserId).toUpperCase();
+        const me2 = currentUid.toUpperCase();
+        return u1 === me2 && u2 === target2 || u2 === me2 && u1 === target2;
+      });
+      if (isFriend) return "friends";
+      const requests = this._getRequests();
+      const target = String(targetUserId).toUpperCase();
+      const me = currentUid.toUpperCase();
+      const req = requests.find((r) => {
+        if (r.status !== "pending") return false;
+        const from = String(r.from || r.senderId || "").toUpperCase();
+        const to = String(r.to || r.receiverId || "").toUpperCase();
+        return from === me && to === target || from === target && to === me;
+      });
+      if (req) {
+        const from = String(req.from || req.senderId || "").toUpperCase();
+        return from === me ? "request_sent" : "request_received";
       }
       return "none";
     }
     sendFriendRequest(targetUserId) {
       const current = auth.getCurrentUser();
       if (!current) throw new Error("Please log in first.");
-      if (current.userId === targetUserId) throw new Error("You cannot add yourself as a friend.");
-      const list = this._getFriendships();
-      const existing = list.find(
-        (f) => this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === targetUserId || this._resolveId(f.user2) === current.userId && this._resolveId(f.user1) === targetUserId
-      );
-      if (existing) {
-        if (existing.status === "accepted") throw new Error("You are already friends.");
-        if (existing.status === "pending") throw new Error("A request is already pending.");
+      const currentUid = current.uid || current.userId;
+      if (String(currentUid).toUpperCase() === String(targetUserId).toUpperCase()) {
+        throw new Error("You cannot add yourself as a friend.");
       }
+      const targetUser = userService.getUserById(targetUserId);
+      if (!targetUser) throw new Error("User not found.");
+      const status = this.getFriendshipStatus(targetUserId);
+      if (status === "friends") throw new Error("You are already friends.");
+      if (status === "request_sent") throw new Error("A request has already been sent.");
+      if (status === "request_received") {
+        const requests2 = this._getRequests();
+        const incoming = requests2.find(
+          (r) => String(r.from || r.senderId || "").toUpperCase() === String(targetUserId).toUpperCase() && String(r.to || r.receiverId || "").toUpperCase() === String(currentUid).toUpperCase()
+        );
+        if (incoming) {
+          return this.acceptFriendRequest(incoming.id || incoming.requestId);
+        }
+      }
+      const requests = this._getRequests();
+      const reqId = "fr-" + Date.now() + "-" + Math.floor(Math.random() * 1e3);
       const newRequest = {
-        id: "fr-" + Date.now(),
-        user1: current.userId,
-        user2: targetUserId,
+        id: reqId,
+        requestId: reqId,
+        from: currentUid,
+        to: targetUser.uid || targetUser.userId,
+        senderId: currentUid,
+        receiverId: targetUser.uid || targetUser.userId,
         status: "pending",
         createdAt: (/* @__PURE__ */ new Date()).toISOString()
       };
-      list.push(newRequest);
-      this._saveFriendships(list);
+      requests.push(newRequest);
+      this._saveRequests(requests);
+      notificationService.addNotification({
+        type: "friend_request",
+        title: "New Friend Request \u{1F48C}",
+        message: `${current.displayName || current.name} (@${current.username}) sent you a friend request.`,
+        fromUserId: currentUid,
+        toUserId: targetUser.uid || targetUser.userId,
+        requestId: reqId
+      });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
+      }
       return newRequest;
     }
     acceptFriendRequest(requestId) {
       const current = auth.getCurrentUser();
       if (!current) throw new Error("Please log in first.");
-      const list = this._getFriendships();
-      const request = list.find((f) => f.id === requestId);
-      if (!request) throw new Error("Friend request not found.");
-      request.status = "accepted";
-      request.acceptedAt = (/* @__PURE__ */ new Date()).toISOString();
-      this._saveFriendships(list);
-      return request;
+      const currentUid = current.uid || current.userId;
+      const requests = this._getRequests();
+      const reqIndex = requests.findIndex((r) => r.id === requestId || r.requestId === requestId);
+      if (reqIndex === -1) {
+        throw new Error("Friend request not found.");
+      }
+      const request = requests[reqIndex];
+      const senderId = request.from || request.senderId;
+      const receiverId = request.to || request.receiverId;
+      const otherUserId = String(senderId).toUpperCase() === String(currentUid).toUpperCase() ? receiverId : senderId;
+      requests.splice(reqIndex, 1);
+      this._saveRequests(requests);
+      const friendships = this._getFriendships();
+      const exists = friendships.some((f) => {
+        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+        const me = String(currentUid).toUpperCase();
+        const them = String(otherUserId).toUpperCase();
+        return u1 === me && u2 === them || u2 === me && u1 === them;
+      });
+      let newFriendship = null;
+      if (!exists) {
+        newFriendship = {
+          id: "fs-" + Date.now() + "-" + Math.floor(Math.random() * 1e3),
+          user1: currentUid,
+          user2: otherUserId,
+          user1Id: currentUid,
+          user2Id: otherUserId,
+          status: "accepted",
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        friendships.push(newFriendship);
+        this._saveFriendships(friendships);
+      }
+      notificationService.removeNotificationByRequestId(requestId);
+      notificationService.addNotification({
+        type: "friend_accepted",
+        title: "Friend Request Accepted! \u2728",
+        message: `${current.displayName || current.name} accepted your friend request! You can now chat in 3D.`,
+        fromUserId: currentUid,
+        toUserId: otherUserId,
+        requestId
+      });
+      const conv = chatService.getOrCreateConversation(otherUserId);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:conversation_unlocked", { detail: { conversationId: conv.conversationId, partnerId: otherUserId } }));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friendships" } }));
+      }
+      return { success: true, conversation: conv };
     }
     rejectFriendRequest(requestId) {
-      const list = this._getFriendships();
-      const filtered = list.filter((f) => f.id !== requestId);
-      this._saveFriendships(filtered);
+      const requests = this._getRequests();
+      const filtered = requests.filter((r) => r.id !== requestId && r.requestId !== requestId);
+      this._saveRequests(filtered);
+      notificationService.removeNotificationByRequestId(requestId);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
+      }
       return true;
     }
     cancelSentRequest(targetUserId) {
-      const current = auth.getCurrentUser();
-      if (!current) return false;
-      const list = this._getFriendships();
-      const filtered = list.filter((f) => {
-        const match = this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === targetUserId && f.status === "pending";
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !targetUserId) return false;
+      const requests = this._getRequests();
+      let canceledReqId = null;
+      const me = String(currentUid).toUpperCase();
+      const target = String(targetUserId).toUpperCase();
+      const filtered = requests.filter((r) => {
+        const from = String(r.from || r.senderId || "").toUpperCase();
+        const to = String(r.to || r.receiverId || "").toUpperCase();
+        const match = from === me && to === target && r.status === "pending";
+        if (match) canceledReqId = r.id || r.requestId;
         return !match;
       });
-      this._saveFriendships(filtered);
+      this._saveRequests(filtered);
+      if (canceledReqId) {
+        notificationService.removeNotificationByRequestId(canceledReqId);
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
+      }
       return true;
     }
     removeFriend(friendUserId) {
-      const current = auth.getCurrentUser();
-      if (!current) return false;
-      const list = this._getFriendships();
-      const filtered = list.filter((f) => {
-        const isMatch = this._resolveId(f.user1) === current.userId && this._resolveId(f.user2) === friendUserId || this._resolveId(f.user2) === current.userId && this._resolveId(f.user1) === friendUserId;
-        return !isMatch;
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !friendUserId) return false;
+      const friendships = this._getFriendships();
+      const me = String(currentUid).toUpperCase();
+      const target = String(friendUserId).toUpperCase();
+      const filtered = friendships.filter((f) => {
+        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+        return !(u1 === me && u2 === target || u2 === me && u1 === target);
       });
       this._saveFriendships(filtered);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friendships" } }));
+      }
       return true;
     }
     getFriendsList() {
-      const current = auth.getCurrentUser();
-      if (!current) return [];
-      const list = this._getFriendships();
-      const friendIds = [];
-      list.forEach((f) => {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
+      const friendships = this._getFriendships();
+      const me = String(currentUid).toUpperCase();
+      const friendUids = [];
+      friendships.forEach((f) => {
         if (f.status === "accepted") {
-          const u1 = this._resolveId(f.user1);
-          const u2 = this._resolveId(f.user2);
-          if (u1 === current.userId) friendIds.push(u2);
-          else if (u2 === current.userId) friendIds.push(u1);
+          const u1 = String(f.user1 || f.user1Id || "");
+          const u2 = String(f.user2 || f.user2Id || "");
+          if (u1.toUpperCase() === me && u2) friendUids.push(u2);
+          else if (u2.toUpperCase() === me && u1) friendUids.push(u1);
         }
       });
-      return friendIds.map((id) => userService.getUserById(id)).filter(Boolean);
+      return friendUids.map((id) => userService.getUserById(id)).filter(Boolean);
     }
     getIncomingRequests() {
-      const current = auth.getCurrentUser();
-      if (!current) return [];
-      const list = this._getFriendships();
-      return list.filter((f) => f.status === "pending" && this._resolveId(f.user2) === current.userId).map((f) => ({
-        requestId: f.id,
-        sender: userService.getUserById(this._resolveId(f.user1)),
-        createdAt: f.createdAt
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
+      const requests = this._getRequests();
+      const me = String(currentUid).toUpperCase();
+      return requests.filter((r) => r.status === "pending" && String(r.to || r.receiverId || "").toUpperCase() === me).map((r) => ({
+        requestId: r.id || r.requestId,
+        sender: userService.getUserById(r.from || r.senderId),
+        createdAt: r.createdAt
       })).filter((item) => item.sender !== null);
     }
     getSentRequests() {
-      const current = auth.getCurrentUser();
-      if (!current) return [];
-      const list = this._getFriendships();
-      return list.filter((f) => f.status === "pending" && this._resolveId(f.user1) === current.userId).map((f) => ({
-        requestId: f.id,
-        recipient: userService.getUserById(this._resolveId(f.user2)),
-        createdAt: f.createdAt
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
+      const requests = this._getRequests();
+      const me = String(currentUid).toUpperCase();
+      return requests.filter((r) => r.status === "pending" && String(r.from || r.senderId || "").toUpperCase() === me).map((r) => ({
+        requestId: r.id || r.requestId,
+        recipient: userService.getUserById(r.to || r.receiverId),
+        createdAt: r.createdAt
       })).filter((item) => item.recipient !== null);
     }
   };
@@ -2506,14 +3656,15 @@
       this.onOpenConversation = onOpenConversation;
       this.container = document.getElementById("friends-view");
       this.currentSubTab = "my-friends";
+      this.searchDebounceTimer = null;
       this._bindEvents();
     }
-    render() {
+    render(searchQuery = "") {
       if (!this.container) return;
       this._renderSubTabs();
       if (this.currentSubTab === "my-friends") this._renderFriendsList();
       else if (this.currentSubTab === "requests") this._renderRequestsList();
-      else if (this.currentSubTab === "search") this._renderSearchTab();
+      else if (this.currentSubTab === "search") this._renderSearchTab(searchQuery);
     }
     _bindEvents() {
       document.querySelectorAll(".friends-subtab-btn").forEach((btn) => {
@@ -2521,6 +3672,12 @@
           this.currentSubTab = btn.dataset.subtab;
           this.render();
         });
+      });
+      window.addEventListener("ym:friends_updated", () => {
+        this._renderSubTabs();
+        if (this.container && this.container.classList.contains("active")) {
+          this.render();
+        }
       });
     }
     _renderSubTabs() {
@@ -2543,7 +3700,7 @@
         <div class="empty-state">
           <div class="empty-state-icon">\u{1F465}</div>
           <div class="empty-state-title">Build Your Circle</div>
-          <div class="empty-state-text">Search for users and connect with friends to start chatting!</div>
+          <div class="empty-state-text">Search for users by Name, Username, User ID, or Birthday to connect and chat!</div>
           <button class="btn-3d btn-primary btn-goto-find-friends" style="margin-top: 10px; font-size: 13px; padding: 8px 18px;">
             Find Friends
           </button>
@@ -2557,31 +3714,35 @@
       }
       listContainer.innerHTML = `
       <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
-        ${friends.map((friend) => `
-          <div class="glass-panel card-3d" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-              <div class="avatar-wrap">
-                <img src="${friend.profilePicture}" class="avatar-img" alt="${friend.name}" />
-                <span class="avatar-status ${friend.onlineStatus === "online" ? "online" : ""}"></span>
+        ${friends.map((friend) => {
+        const uid = friend.uid || friend.userId;
+        const avatar = friend.profilePicture || friend.avatar || APP_CONFIG.defaultAvatar;
+        return `
+            <div class="glass-panel card-3d" style="padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+              <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="avatar-wrap">
+                  <img src="${avatar}" class="avatar-img" alt="${friend.name}" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+                  <span class="avatar-status ${friend.onlineStatus === "online" ? "online" : ""}"></span>
+                </div>
+                <div style="overflow: hidden;">
+                  <div style="font-weight: 700; font-size: 15px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${friend.name}</div>
+                  <div style="font-size: 12px; color: var(--color-romantic-rose);">@${friend.username} \u2022 <span style="opacity: 0.85; font-family: var(--font-mono);">${uid}</span></div>
+                </div>
               </div>
-              <div style="overflow: hidden;">
-                <div style="font-weight: 700; font-size: 15px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${friend.name}</div>
-                <div style="font-size: 12px; color: var(--color-romantic-rose);">@${friend.username} \u2022 <span style="opacity: 0.8;">${friend.userId}</span></div>
+              <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.4; height: 38px; overflow: hidden; text-overflow: ellipsis;">
+                ${friend.bio || "Hey there! I am using You & Me \u{1F680}"}
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: auto;">
+                <button class="btn-3d btn-primary btn-msg-friend" data-user-id="${uid}" style="flex: 1; padding: 8px 12px; font-size: 13px;">
+                  Message
+                </button>
+                <button class="btn-3d btn-glass btn-remove-friend" data-user-id="${uid}" data-name="${friend.name}" style="padding: 8px 12px; font-size: 13px; color: var(--color-danger);">
+                  Remove
+                </button>
               </div>
             </div>
-            <div style="font-size: 13px; color: var(--text-secondary); line-height: 1.4; height: 38px; overflow: hidden; text-overflow: ellipsis;">
-              ${friend.bio || "Hey there! I am using You & Me \u{1F680}"}
-            </div>
-            <div style="display: flex; gap: 8px; margin-top: auto;">
-              <button class="btn-3d btn-primary btn-msg-friend" data-user-id="${friend.userId}" style="flex: 1; padding: 8px 12px; font-size: 13px;">
-                Message
-              </button>
-              <button class="btn-3d btn-glass btn-remove-friend" data-user-id="${friend.userId}" data-name="${friend.name}" style="padding: 8px 12px; font-size: 13px; color: var(--color-danger);">
-                Remove
-              </button>
-            </div>
-          </div>
-        `).join("")}
+          `;
+      }).join("")}
       </div>
     `;
       listContainer.querySelectorAll(".btn-msg-friend").forEach((btn) => {
@@ -2596,7 +3757,7 @@
         btn.addEventListener("click", async () => {
           const ok = await modal.confirm({
             title: "Remove Friend?",
-            message: `Are you sure you want to remove ${btn.dataset.name} from your friends?`,
+            message: `Are you sure you want to remove ${btn.dataset.name} from your friends list?`,
             confirmText: "Remove",
             isDanger: true
           });
@@ -2617,7 +3778,7 @@
         listContainer.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">\u{1F48C}</div>
-          <div class="empty-state-title">No New Requests</div>
+          <div class="empty-state-title">No Pending Requests</div>
           <div class="empty-state-text">You have no pending friend requests at this time.</div>
         </div>
       `;
@@ -2632,21 +3793,26 @@
           </h4>
           ${incoming.length === 0 ? '<div style="font-size: 13px; color: var(--text-muted);">No incoming requests.</div>' : `
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px;">
-              ${incoming.map((req) => `
-                <div class="glass-panel card-3d" style="padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
-                  <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
-                    <img src="${req.sender.profilePicture}" class="avatar-img avatar-sm" alt="" />
-                    <div style="overflow: hidden;">
-                      <div style="font-weight: 700; font-size: 14.5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${req.sender.name}</div>
-                      <div style="font-size: 11.5px; color: var(--text-muted);">@${req.sender.username} \u2022 ${req.sender.userId}</div>
+              ${incoming.map((req) => {
+        const s = req.sender;
+        const avatar = s.profilePicture || s.avatar || APP_CONFIG.defaultAvatar;
+        const uid = s.uid || s.userId;
+        return `
+                  <div class="glass-panel card-3d" style="padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                      <img src="${avatar}" class="avatar-img avatar-sm" alt="" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+                      <div style="overflow: hidden;">
+                        <div style="font-weight: 700; font-size: 14.5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${s.name}</div>
+                        <div style="font-size: 11.5px; color: var(--text-muted);">@${s.username} \u2022 <span style="font-family: var(--font-mono);">${uid}</span></div>
+                      </div>
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                      <button class="btn-3d btn-primary btn-accept-req" data-req-id="${req.requestId}" style="padding: 6px 14px; font-size: 12px;">Accept</button>
+                      <button class="btn-3d btn-glass btn-reject-req" data-req-id="${req.requestId}" style="padding: 6px 10px; font-size: 12px; color: var(--color-danger);">&times;</button>
                     </div>
                   </div>
-                  <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                    <button class="btn-3d btn-primary btn-accept-req" data-req-id="${req.requestId}" style="padding: 6px 12px; font-size: 12px;">Accept</button>
-                    <button class="btn-3d btn-glass btn-reject-req" data-req-id="${req.requestId}" style="padding: 6px 10px; font-size: 12px; color: var(--color-danger);">&times;</button>
-                  </div>
-                </div>
-              `).join("")}
+                `;
+      }).join("")}
             </div>
           `}
         </div>
@@ -2658,18 +3824,23 @@
           </h4>
           ${sent.length === 0 ? '<div style="font-size: 13px; color: var(--text-muted);">No sent pending requests.</div>' : `
             <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
-              ${sent.map((s) => `
-                <div class="glass-panel" style="padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
-                  <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
-                    <img src="${s.recipient.profilePicture}" class="avatar-img avatar-sm" alt="" />
-                    <div style="overflow: hidden;">
-                      <div style="font-weight: 600; font-size: 13.5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${s.recipient.name}</div>
-                      <div style="font-size: 11px; color: var(--text-muted);">@${s.recipient.username}</div>
+              ${sent.map((s) => {
+        const r = s.recipient;
+        const avatar = r.profilePicture || r.avatar || APP_CONFIG.defaultAvatar;
+        const uid = r.uid || r.userId;
+        return `
+                  <div class="glass-panel" style="padding: 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                      <img src="${avatar}" class="avatar-img avatar-sm" alt="" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+                      <div style="overflow: hidden;">
+                        <div style="font-weight: 600; font-size: 13.5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${r.name}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">@${r.username} \u2022 <span style="font-family: var(--font-mono);">${uid}</span></div>
+                      </div>
                     </div>
+                    <button class="btn-3d btn-glass btn-cancel-sent" data-user-id="${uid}" style="padding: 5px 12px; font-size: 11.5px;">Cancel</button>
                   </div>
-                  <button class="btn-3d btn-glass btn-cancel-sent" data-user-id="${s.recipient.userId}" style="padding: 5px 10px; font-size: 11.5px;">Cancel</button>
-                </div>
-              `).join("")}
+                `;
+      }).join("")}
             </div>
           `}
         </div>
@@ -2678,16 +3849,14 @@
       listContainer.querySelectorAll(".btn-accept-req").forEach((btn) => {
         btn.addEventListener("click", () => {
           friendService.acceptFriendRequest(btn.dataset.reqId);
-          toast.success("Friend request accepted! \u2728");
-          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+          toast.success("Friend request accepted! You can now chat \u2728");
           this.render();
         });
       });
       listContainer.querySelectorAll(".btn-reject-req").forEach((btn) => {
         btn.addEventListener("click", () => {
           friendService.rejectFriendRequest(btn.dataset.reqId);
-          toast.info("Request declined.");
-          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+          toast.info("Friend request declined.");
           this.render();
         });
       });
@@ -2695,64 +3864,128 @@
         btn.addEventListener("click", () => {
           friendService.cancelSentRequest(btn.dataset.userId);
           toast.info("Request canceled.");
-          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
           this.render();
         });
       });
     }
-    _renderSearchTab() {
+    _renderSearchTab(initialQuery = "") {
       const listContainer = document.getElementById("friends-subview-content");
       if (!listContainer) return;
+      const allEnrolled = userService.getAllEnrolledUsers({ excludeSelf: true });
+      const dynamicChipsHtml = allEnrolled.slice(0, 6).map((u) => `
+      <button type="button" class="search-chip" data-query="@${u.username}">@${u.username}</button>
+    `).join("");
       listContainer.innerHTML = `
-      <div style="display: flex; flex-direction: column; gap: 18px;">
-        <div class="input-with-icon" style="max-width: 500px;">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-          <input type="text" id="user-global-search-input" placeholder="Search by name, @username, or User ID (e.g. YM-482913)..." autofocus />
+      <div style="display: flex; flex-direction: column; gap: 16px;">
+        <div class="search-tab-header">
+          <div class="input-with-icon" style="max-width: 540px; width: 100%;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="user-global-search-input" placeholder="Search by name, @username, User ID (SK-XXXXXX), or DOB..." value="${initialQuery ? this._escapeHtml(initialQuery) : ""}" autofocus />
+            <button id="user-global-search-clear" class="search-clear-btn" style="${initialQuery ? "display: flex;" : "display: none;"}" title="Clear search">&times;</button>
+          </div>
+          <div class="search-helper-chips">
+            <span class="chip-label">Quick Search:</span>
+            ${dynamicChipsHtml || '<span style="font-size: 11.5px; color: var(--text-muted);">No other users registered yet</span>'}
+          </div>
         </div>
-        <div id="user-search-results" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px;">
+
+        <div id="user-search-status-bar" style="font-size: 13.5px; font-weight: 600; color: var(--text-secondary); margin-top: 4px;"></div>
+
+        <div id="user-search-results" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px;">
           <!-- Results inserted dynamically -->
         </div>
       </div>
     `;
       const searchInput = document.getElementById("user-global-search-input");
+      const clearBtn = document.getElementById("user-global-search-clear");
       const resultsContainer = document.getElementById("user-search-results");
+      const statusBar = document.getElementById("user-search-status-bar");
       const doSearch = (query) => {
-        const results = userService.searchUsers(query);
+        const q = String(query || "").trim();
+        if (clearBtn) {
+          clearBtn.style.display = q ? "flex" : "none";
+        }
+        const isDefault = !q;
+        const results = isDefault ? userService.getAllEnrolledUsers({ excludeSelf: true }) : userService.searchUsers(q, { excludeSelf: false });
+        if (statusBar) {
+          if (isDefault) {
+            statusBar.innerHTML = `\u{1F465} <span>Registered Community Members (${results.length} total)</span>`;
+          } else {
+            statusBar.innerHTML = `\u{1F50D} <span>Found ${results.length} ${results.length === 1 ? "user" : "users"} matching "<strong>${this._escapeHtml(q)}</strong>"</span>`;
+          }
+        }
         if (results.length === 0) {
           resultsContainer.innerHTML = `
-          <div class="empty-state" style="grid-column: 1 / -1;">
+          <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 20px;">
             <div class="empty-state-icon">\u{1F50D}</div>
             <div class="empty-state-title">No Users Found</div>
-            <div class="empty-state-text">Try searching with a different name, username or User ID.</div>
+            <div class="empty-state-text" style="max-width: 440px; line-height: 1.6;">
+              No matches found for "<strong>${this._escapeHtml(q)}</strong>".<br/>
+              <strong>Search by:</strong><br/>
+              \u2022 <strong>Full Name</strong> (e.g. <em>Rahul Sharma</em>)<br/>
+              \u2022 <strong>Username</strong> (e.g. <em>@rahul</em> or <em>rahul</em>)<br/>
+              \u2022 <strong>User ID / UID</strong> (e.g. <em>SK-A82K92</em>)<br/>
+              \u2022 <strong>Date of Birth</strong> (e.g. <em>YYYY-MM-DD</em> or <em>12/05/2006</em>)
+            </div>
           </div>
         `;
           return;
         }
         resultsContainer.innerHTML = results.map((u) => {
-          const status = friendService.getFriendshipStatus(u.userId);
+          const uid = u.uid || u.userId;
+          const status = friendService.getFriendshipStatus(uid);
           let actionBtn = "";
-          if (status === "friends") {
-            actionBtn = `<button class="btn-3d btn-glass" disabled style="padding:6px 12px; font-size:12px; opacity:0.7;">Friends \u2713</button>`;
+          if (u.isSelf) {
+            actionBtn = `
+            <button class="btn-3d btn-glass btn-view-self-profile" style="padding:6px 14px; font-size:12px;" title="View Your Profile">
+              \u{1F464} Your Profile
+            </button>
+          `;
+          } else if (status === "friends") {
+            actionBtn = `
+            <button class="btn-3d btn-primary btn-msg-user" data-user-id="${uid}" style="padding:6px 14px; font-size:12px;" title="Open Chat">
+              \u{1F4AC} Friends
+            </button>
+          `;
           } else if (status === "request_sent") {
-            actionBtn = `<button class="btn-3d btn-glass btn-cancel-search-req" data-user-id="${u.userId}" style="padding:6px 12px; font-size:12px;">Pending (Cancel)</button>`;
+            actionBtn = `
+            <button class="btn-3d btn-glass btn-cancel-search-req" data-user-id="${uid}" style="padding:6px 12px; font-size:12px;" title="Click to cancel request">
+              Request Sent \u2715
+            </button>
+          `;
           } else if (status === "request_received") {
-            actionBtn = `<button class="btn-3d btn-primary btn-respond-search-req" style="padding:6px 12px; font-size:12px;">Respond</button>`;
+            actionBtn = `
+            <button class="btn-3d btn-primary btn-accept-search-req" data-user-id="${uid}" style="padding:6px 12px; font-size:12px;">
+              Accept Request \u2713
+            </button>
+          `;
           } else {
-            actionBtn = `<button class="btn-3d btn-primary btn-add-user" data-user-id="${u.userId}" style="padding:6px 12px; font-size:12px;">Add Friend +</button>`;
+            actionBtn = `
+            <button class="btn-3d btn-primary btn-add-user" data-user-id="${uid}" style="padding:6px 14px; font-size:12px;" title="Send friend request">
+              \u2795 Add Friend
+            </button>
+          `;
           }
+          const avatar = u.profilePicture || u.avatar || APP_CONFIG.defaultAvatar;
+          const dobText = u.dob || u.birthday ? ` \u2022 \u{1F382} ${u.dob || u.birthday}` : "";
           return `
           <div class="glass-panel card-3d" style="padding: 16px; display: flex; flex-direction: column; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 12px;">
-              <img src="${u.profilePicture}" class="avatar-img" alt="" />
-              <div style="overflow: hidden;">
-                <div style="font-weight: 700; font-size: 14.5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${u.name}</div>
-                <div style="font-size: 12px; color: var(--color-romantic-rose);">@${u.username} \u2022 ${u.userId}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                <div class="avatar-wrap">
+                  <img src="${avatar}" class="avatar-img avatar-sm" alt="" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+                  <span class="avatar-status ${u.onlineStatus === "online" ? "online" : ""}"></span>
+                </div>
+                <div style="overflow: hidden;">
+                  <div style="font-weight: 700; font-size: 14.5px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${u.name}</div>
+                  <div style="font-size: 11.5px; color: var(--color-romantic-rose);">@${u.username} \u2022 <span style="font-family: var(--font-mono);">${uid}</span>${dobText}</div>
+                </div>
               </div>
             </div>
             <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.4; height: 34px; overflow: hidden; text-overflow: ellipsis;">
-              ${u.bio || "Available for conversations \u2728"}
+              ${u.bio || "Hey there! I am using You & Me \u{1F680}"}
             </div>
-            <div style="display: flex; justify-content: flex-end; margin-top: auto;">
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px;">
               ${actionBtn}
             </div>
           </div>
@@ -2761,12 +3994,9 @@
         resultsContainer.querySelectorAll(".btn-add-user").forEach((btn) => {
           btn.addEventListener("click", () => {
             try {
-              const targetUser = userService.getUserById(btn.dataset.userId);
               friendService.sendFriendRequest(btn.dataset.userId);
-              const targetDisplay = targetUser ? `${targetUser.name} (${targetUser.userId})` : btn.dataset.userId;
-              toast.success(`Friend request sent to ${targetDisplay}! \u{1F48C}`);
-              window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-              doSearch(searchInput.value);
+              toast.success("Friend request sent! \u{1F48C}");
+              doSearch(searchInput ? searchInput.value : "");
             } catch (err) {
               toast.error(err.message);
             }
@@ -2776,13 +4006,66 @@
           btn.addEventListener("click", () => {
             friendService.cancelSentRequest(btn.dataset.userId);
             toast.info("Request canceled.");
-            window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-            doSearch(searchInput.value);
+            doSearch(searchInput ? searchInput.value : "");
+          });
+        });
+        resultsContainer.querySelectorAll(".btn-accept-search-req").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const incoming = friendService.getIncomingRequests();
+            const found = incoming.find((r) => r.sender && (r.sender.uid === btn.dataset.userId || r.sender.userId === btn.dataset.userId));
+            if (found) {
+              friendService.acceptFriendRequest(found.requestId);
+              toast.success("Friend request accepted! \u2728");
+              doSearch(searchInput ? searchInput.value : "");
+            }
+          });
+        });
+        resultsContainer.querySelectorAll(".btn-msg-user").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const conv = chatService.getOrCreateConversation(btn.dataset.userId);
+            if (this.onOpenConversation) {
+              this.onOpenConversation(conv.conversationId);
+            }
+          });
+        });
+        resultsContainer.querySelectorAll(".btn-view-self-profile").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            if (window.ymApp) window.ymApp.switchView("profile");
           });
         });
       };
-      searchInput.addEventListener("input", (e) => doSearch(e.target.value));
-      doSearch("");
+      if (searchInput) {
+        searchInput.addEventListener("input", (e) => {
+          clearTimeout(this.searchDebounceTimer);
+          this.searchDebounceTimer = setTimeout(() => {
+            doSearch(e.target.value);
+          }, 120);
+        });
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          if (searchInput) {
+            searchInput.value = "";
+            clearBtn.style.display = "none";
+            doSearch("");
+            searchInput.focus();
+          }
+        });
+      }
+      listContainer.querySelectorAll(".search-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          if (searchInput) {
+            searchInput.value = chip.dataset.query;
+            doSearch(chip.dataset.query);
+            searchInput.focus();
+          }
+        });
+      });
+      doSearch(initialQuery);
+    }
+    _escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
   };
 
@@ -2795,6 +4078,7 @@
       if (!this.container) return;
       const user = auth.getCurrentUser();
       if (!user) return;
+      const uid = user.uid || user.userId;
       const friends = friendService.getFriendsList();
       const joinDate = user.createdAt ? new Date(user.createdAt).toLocaleDateString(void 0, { month: "long", year: "numeric" }) : "Recently";
       this.container.innerHTML = `
@@ -2811,7 +4095,7 @@
         </div>
         <div class="glass-panel-elevated card-3d" style="padding: 32px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 16px;">
           <div class="avatar-wrap avatar-lg" style="margin-bottom: 4px;">
-            <img src="${user.profilePicture}" class="avatar-img" alt="${user.name}" id="profile-display-avatar" />
+            <img src="${user.profilePicture || user.avatar}" class="avatar-img" alt="${user.name}" id="profile-display-avatar" />
             <span class="avatar-status online"></span>
           </div>
 
@@ -2819,7 +4103,15 @@
             <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 4px;">${user.name}</h2>
             <div style="font-size: 14px; color: var(--color-romantic-rose); font-weight: 600;">@${user.username}</div>
             <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; font-family: var(--font-mono); background: rgba(0,0,0,0.2); padding: 3px 10px; border-radius: 8px; display: inline-block;">
-              User ID: ${user.userId}
+              User ID: ${uid}
+            </div>
+            ${user.dob || user.birthday ? `
+              <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">
+                \u{1F382} Birthday: ${user.dob || user.birthday}
+              </div>
+            ` : ""}
+            <div style="font-size: 12px; color: var(--color-cyan-accent); margin-top: 4px; font-weight: 600;">
+              \u{1F310} Language: ${user.language || "English"}
             </div>
           </div>
 
@@ -2848,7 +4140,7 @@
         <!-- Creator Signature in Mobile/Desktop View -->
         <div class="mobile-view-footer">
           <div class="creator-signature">
-            <span>Made by Sakcham</span>
+            <span>Made by Saksham</span>
             <span class="heart-icon">\u2764\uFE0F</span>
           </div>
         </div>
@@ -2873,6 +4165,13 @@
             <div class="input-group">
               <label class="input-label">Bio</label>
               <textarea id="edit-bio" rows="3">${user.bio || ""}</textarea>
+            </div>
+            <div class="input-group">
+              <label class="input-label">Preferred Chat Language</label>
+              <select id="edit-language" style="width: 100%; padding: 10px 14px; border-radius: 12px; background: var(--glass-surface-2); color: var(--text-primary); border: 1px solid var(--glass-border); font-family: inherit;">
+                <option value="English" ${user.language === "Hindi" ? "" : "selected"}>English</option>
+                <option value="Hindi" ${user.language === "Hindi" ? "selected" : ""}>Hindi (\u0939\u093F\u0902\u0926\u0940)</option>
+              </select>
             </div>
             <div class="input-group">
               <label class="input-label">Change Profile Picture</label>
@@ -2922,8 +4221,12 @@
           const name = document.getElementById("edit-name").value.trim();
           const status = document.getElementById("edit-status").value.trim();
           const bio = document.getElementById("edit-bio").value.trim();
-          const updates = { name, status, bio };
-          if (newAvatarData) updates.profilePicture = newAvatarData;
+          const language = document.getElementById("edit-language").value;
+          const updates = { name, displayName: name, status, bio, language };
+          if (newAvatarData) {
+            updates.profilePicture = newAvatarData;
+            updates.avatar = newAvatarData;
+          }
           auth.updateCurrentUser(updates);
           toast.success("Profile updated successfully! \u2728");
           closeModal();
@@ -2941,8 +4244,12 @@
     }
     render() {
       if (!this.container) return;
-      const settings = storage.get("settings") || {};
+      const settings = storage.get("app_settings") || {};
       const isDark = settings.theme !== "light";
+      const allUsers = userService.getAllUsers();
+      const current = auth.getCurrentUser();
+      const currentUid = current ? current.uid || current.userId : null;
+      const currentLang = current?.language || settings.language || "English";
       this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 20px;">
         <div class="subview-top-bar">
@@ -2983,7 +4290,26 @@
           </div>
         </div>
 
-        <!-- Audio & Notifications -->
+        <!-- Language & Translation Section -->
+        <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--color-cyan-accent); display: flex; align-items: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            Chat Language & Translation (Hindi / English)
+          </h3>
+
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <div style="font-weight: 600; font-size: 14px;">Preferred Language</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Used for in-chat message translation</div>
+            </div>
+            <div style="display: flex; background: rgba(0,0,0,0.25); border-radius: 12px; padding: 4px;">
+              <button class="btn-lang-select ${currentLang === "English" ? "active" : ""}" data-lang="English" style="padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: ${currentLang === "English" ? "#fff" : "var(--text-muted)"}; background: ${currentLang === "English" ? "var(--color-primary)" : "transparent"};">English</button>
+              <button class="btn-lang-select ${currentLang === "Hindi" ? "active" : ""}" data-lang="Hindi" style="padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: ${currentLang === "Hindi" ? "#fff" : "var(--text-muted)"}; background: ${currentLang === "Hindi" ? "var(--color-primary)" : "transparent"};">Hindi (\u0939\u093F\u0902\u0926\u0940)</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio & Messages -->
         <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
           <h3 style="font-size: 15px; font-weight: 700; color: var(--color-primary-light); display: flex; align-items: center; gap: 8px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -3013,7 +4339,7 @@
 
         <!-- Privacy Section -->
         <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
-          <h3 style="font-size: 15px; font-weight: 700; color: var(--color-cyan-accent); display: flex; align-items: center; gap: 8px;">
+          <h3 style="font-size: 15px; font-weight: 700; color: var(--color-romantic-pink); display: flex; align-items: center; gap: 8px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
             Privacy
           </h3>
@@ -3026,6 +4352,39 @@
             <label class="remember-label">
               <input type="checkbox" id="toggle-privacy-online" ${settings.privacyOnline !== false ? "checked" : ""} />
             </label>
+          </div>
+        </div>
+
+        <!-- Account Switcher Section (Testing Multi-Account locally) -->
+        <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--color-romantic-pink); display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+              Account Switcher (Instant 1-Click)
+            </h3>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(255, 51, 102, 0.15); color: var(--color-romantic-pink); font-weight: 600;">Test & Chat</span>
+          </div>
+          <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+            Easily switch between registered profiles on this browser to test messaging, friend requests, and chatting between User A and User B.
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto;">
+            ${allUsers.length === 0 ? '<div style="font-size: 12px; color: var(--text-muted);">No other users registered yet.</div>' : allUsers.map((u) => {
+        const uUid = u.uid || u.userId;
+        const isCurrent = currentUid && currentUid === uUid;
+        const avatar = u.profilePicture || u.avatar || APP_CONFIG.defaultAvatar;
+        return `
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: 10px; background: ${isCurrent ? "rgba(138, 63, 252, 0.15)" : "rgba(255, 255, 255, 0.04)"}; border: 1px solid ${isCurrent ? "var(--color-primary)" : "rgba(255, 255, 255, 0.08)"};">
+                  <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+                    <img src="${avatar}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+                    <div style="overflow: hidden;">
+                      <div style="font-size: 13.5px; font-weight: 700; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;">${u.name} ${isCurrent ? '<span style="color: var(--color-primary-light); font-size: 11px;">(Active)</span>' : ""}</div>
+                      <div style="font-size: 11.5px; color: var(--text-muted);">@${u.username} \u2022 <span style="font-family: var(--font-mono);">${uUid}</span></div>
+                    </div>
+                  </div>
+                  ${isCurrent ? '<span style="font-size: 12px; color: var(--color-success); font-weight: 600; padding: 4px 10px;">\u2713 Active</span>' : `<button type="button" class="btn-3d btn-primary btn-switch-account" data-user-id="${uUid}" style="padding: 5px 12px; font-size: 12px;">Switch</button>`}
+                </div>
+              `;
+      }).join("")}
           </div>
         </div>
 
@@ -3043,7 +4402,7 @@
         <!-- Creator Signature in Natural View Scroll -->
         <div class="mobile-view-footer">
           <div class="creator-signature">
-            <span>Made by Sakcham</span>
+            <span>Made by Saksham</span>
             <span class="heart-icon">\u2764\uFE0F</span>
           </div>
         </div>
@@ -3052,14 +4411,24 @@
       this._bindEvents();
     }
     _bindEvents() {
-      const settings = storage.get("settings") || {};
+      const settings = storage.get("app_settings") || {};
       document.querySelectorAll(".btn-theme-select").forEach((btn) => {
         btn.addEventListener("click", () => {
           const theme = btn.dataset.theme;
           settings.theme = theme;
-          storage.set("settings", settings);
+          storage.set("app_settings", settings);
           document.documentElement.setAttribute("data-theme", theme);
           toast.info(`Switched to ${theme === "dark" ? "Dark 3D" : "Light 3D"} theme!`);
+          this.render();
+        });
+      });
+      document.querySelectorAll(".btn-lang-select").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const lang = btn.dataset.lang;
+          settings.language = lang;
+          storage.set("app_settings", settings);
+          auth.updateCurrentUser({ language: lang });
+          toast.success(`Chat language set to ${lang}! \u{1F310}`);
           this.render();
         });
       });
@@ -3069,7 +4438,7 @@
         depthSlider.addEventListener("input", (e) => {
           const val = parseFloat(e.target.value);
           settings.depthIntensity = val;
-          storage.set("settings", settings);
+          storage.set("app_settings", settings);
           if (depthLabel) depthLabel.textContent = `${Math.round(val * 100)}%`;
         });
       }
@@ -3077,7 +4446,7 @@
       if (soundToggle) {
         soundToggle.addEventListener("change", (e) => {
           settings.soundEnabled = e.target.checked;
-          storage.set("settings", settings);
+          storage.set("app_settings", settings);
           if (e.target.checked) {
             sound.playNotification();
             toast.success("Sound effects enabled! \u{1F514}");
@@ -3090,9 +4459,22 @@
       if (enterToggle) {
         enterToggle.addEventListener("change", (e) => {
           settings.enterToSend = e.target.checked;
-          storage.set("settings", settings);
+          storage.set("app_settings", settings);
         });
       }
+      this.container.querySelectorAll(".btn-switch-account").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const userId = btn.dataset.userId;
+          const target = userService.getUserById(userId);
+          if (target) {
+            auth.setCurrentUser(target);
+            toast.success(`Switched account to ${target.name} (@${target.username})! \u{1F680}`);
+            setTimeout(() => {
+              window.location.reload();
+            }, 350);
+          }
+        });
+      });
       const logoutBtn = document.getElementById("btn-logout");
       if (logoutBtn) {
         logoutBtn.addEventListener("click", async () => {
@@ -3120,7 +4502,7 @@
     }
     render() {
       if (!this.container) return;
-      const notifs = notificationService2.getNotifications();
+      const notifs = notificationService.getNotifications();
       this.container.innerHTML = `
       <div style="max-width: 600px; margin: 0 auto; width: 100%; display: flex; flex-direction: column; gap: 16px;">
         <div class="subview-top-bar">
@@ -3144,17 +4526,38 @@
           <div style="display: flex; flex-direction: column; gap: 10px;">
             ${notifs.map((n) => {
         const timeStr = new Date(n.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+        const isFriendReq = n.type === "friend_request";
+        const isFriendAccepted = n.type === "friend_accepted";
         return `
-                <div class="glass-panel card-3d" style="padding: 14px 18px; display: flex; align-items: center; gap: 14px; border-left: 4px solid ${n.read ? "transparent" : "var(--color-romantic-pink)"};">
-                  <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--glass-surface-2); display: flex; align-items: center; justify-content: center; color: var(--color-romantic-rose);">
-                    ${n.type === "message" ? "\u{1F4AC}" : n.type === "reaction" ? "\u2764\uFE0F" : "\u{1F48C}"}
+                <div class="glass-panel card-3d" style="padding: 14px 18px; display: flex; align-items: flex-start; gap: 14px; border-left: 4px solid ${n.read ? "transparent" : "var(--color-romantic-pink)"};">
+                  <div style="width: 38px; height: 38px; border-radius: 50%; background: var(--glass-surface-2); display: flex; align-items: center; justify-content: center; color: var(--color-romantic-rose); font-size: 18px; flex-shrink: 0; margin-top: 2px;">
+                    ${n.type === "message" ? "\u{1F4AC}" : n.type === "reaction" ? "\u2764\uFE0F" : isFriendAccepted ? "\u{1F389}" : "\u{1F48C}"}
                   </div>
                   <div style="flex: 1; min-width: 0;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                       <div style="font-weight: 700; font-size: 14px;">${n.title}</div>
                       <div style="font-size: 11px; color: var(--text-muted);">${timeStr}</div>
                     </div>
-                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 2px;">${n.message}</div>
+                    <div style="font-size: 13px; color: var(--text-secondary); margin-top: 3px;">${n.message}</div>
+
+                    ${isFriendReq ? `
+                      <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button type="button" class="btn-3d btn-primary btn-notif-accept" data-req-id="${n.requestId || ""}" data-sender-id="${n.fromUserId || ""}" data-notif-id="${n.id}" style="padding: 6px 14px; font-size: 12px;">
+                          Accept Request \u2713
+                        </button>
+                        <button type="button" class="btn-3d btn-glass btn-notif-decline" data-req-id="${n.requestId || ""}" data-notif-id="${n.id}" style="padding: 6px 12px; font-size: 12px; color: var(--color-danger);">
+                          Decline
+                        </button>
+                      </div>
+                    ` : ""}
+
+                    ${isFriendAccepted ? `
+                      <div style="display: flex; gap: 8px; margin-top: 10px;">
+                        <button type="button" class="btn-3d btn-primary btn-notif-chat" data-user-id="${n.fromUserId || ""}" style="padding: 6px 14px; font-size: 12px;">
+                          \u{1F4AC} Open Chat
+                        </button>
+                      </div>
+                    ` : ""}
                   </div>
                 </div>
               `;
@@ -3164,7 +4567,7 @@
 
         <div class="mobile-view-footer">
           <div class="creator-signature">
-            <span>Made by Sakcham</span>
+            <span>Made by Saksham</span>
             <span class="heart-icon">\u2764\uFE0F</span>
           </div>
         </div>
@@ -3174,15 +4577,442 @@
     }
     _bindEvents() {
       document.getElementById("btn-mark-all-notifs-read")?.addEventListener("click", () => {
-        notificationService2.markAllAsRead();
+        notificationService.markAllAsRead();
         toast.success("All marked as read.");
         this.render();
       });
       document.getElementById("btn-clear-all-notifs")?.addEventListener("click", () => {
-        notificationService2.clearAll();
+        notificationService.clearAll();
         toast.info("Notifications cleared.");
         this.render();
       });
+      this.container.querySelectorAll(".btn-notif-accept").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const reqId = btn.dataset.reqId;
+          const senderId = btn.dataset.senderId;
+          const notifId = btn.dataset.notifId;
+          try {
+            let resolvedReqId = reqId;
+            if (!resolvedReqId && senderId) {
+              const incoming = friendService.getIncomingRequests();
+              const found = incoming.find((r) => r.sender && r.sender.userId === senderId);
+              if (found) resolvedReqId = found.requestId;
+            }
+            if (resolvedReqId) {
+              const res = friendService.acceptFriendRequest(resolvedReqId);
+              toast.success("Friend request accepted! Chat unlocked \u2728");
+              this.render();
+              if (this.onOpenConversation && res.conversation) {
+                this.onOpenConversation(res.conversation.conversationId);
+              }
+            } else {
+              notificationService.removeNotification(notifId);
+              toast.info("Request resolved.");
+              this.render();
+            }
+          } catch (err) {
+            toast.error(err.message);
+            this.render();
+          }
+        });
+      });
+      this.container.querySelectorAll(".btn-notif-decline").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const reqId = btn.dataset.reqId;
+          const notifId = btn.dataset.notifId;
+          try {
+            if (reqId) {
+              friendService.rejectFriendRequest(reqId);
+            } else if (notifId) {
+              notificationService.removeNotification(notifId);
+            }
+            toast.info("Friend request declined.");
+            this.render();
+          } catch (err) {
+            toast.error(err.message);
+          }
+        });
+      });
+      this.container.querySelectorAll(".btn-notif-chat").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const userId = btn.dataset.userId;
+          if (userId) {
+            const conv = chatService.getOrCreateConversation(userId);
+            if (this.onOpenConversation) {
+              this.onOpenConversation(conv.conversationId);
+            }
+          }
+        });
+      });
+    }
+  };
+
+  // js/components/searchSuggestions.js
+  var SearchSuggestions = class {
+    constructor({ inputId, containerId, onOpenConversation, onOpenFriendsView, onOpenProfileView }) {
+      this.inputId = inputId;
+      this.containerId = containerId;
+      this.input = document.getElementById(inputId);
+      this.container = document.getElementById(containerId);
+      this.onOpenConversation = onOpenConversation;
+      this.onOpenFriendsView = onOpenFriendsView;
+      this.onOpenProfileView = onOpenProfileView;
+      this.isOpen = false;
+      this.selectedIndex = -1;
+      this.currentResults = [];
+      this.debounceTimer = null;
+      this._ensureElements();
+      this._init();
+    }
+    _ensureElements() {
+      if (!this.input && this.inputId) {
+        this.input = document.getElementById(this.inputId);
+      }
+      if (!this.container && this.containerId) {
+        this.container = document.getElementById(this.containerId);
+      }
+    }
+    _init() {
+      this._ensureElements();
+      if (!this.input) return;
+      this.input.addEventListener("input", (e) => {
+        clearTimeout(this.debounceTimer);
+        this.debounceTimer = setTimeout(() => {
+          this.search(e.target.value);
+        }, 150);
+      });
+      this.input.addEventListener("focus", () => {
+        this.search(this.input.value);
+      });
+      this.input.addEventListener("keydown", (e) => {
+        if (!this.isOpen) return;
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          this.navigate(1);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          this.navigate(-1);
+        } else if (e.key === "Enter") {
+          if (this.selectedIndex >= 0 && this.selectedIndex < this.currentResults.length) {
+            e.preventDefault();
+            this.selectUser(this.currentResults[this.selectedIndex]);
+          }
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          this.close();
+        }
+      });
+      document.addEventListener("click", (e) => {
+        if (!this.isOpen) return;
+        this._ensureElements();
+        const clickedInside = this.container && this.container.contains(e.target) || this.input && this.input.contains(e.target);
+        if (!clickedInside) {
+          this.close();
+        }
+      });
+    }
+    search(query) {
+      this._ensureElements();
+      if (!this.container) return;
+      const q = (query || "").trim();
+      if (!q) {
+        this.currentResults = userService.getSuggestedUsers(12, false).filter((u) => !u.isSelf);
+        this.render(this.currentResults, "", true);
+        return;
+      }
+      this.currentResults = userService.searchUsers(q, { limit: 12, excludeSelf: false });
+      this.render(this.currentResults, q, false);
+    }
+    navigate(dir) {
+      if (!this.currentResults || this.currentResults.length === 0) return;
+      this.selectedIndex = Math.max(-1, Math.min(this.currentResults.length - 1, this.selectedIndex + dir));
+      this._highlightSelected();
+    }
+    _highlightSelected() {
+      this._ensureElements();
+      if (!this.container) return;
+      const items = this.container.querySelectorAll(".suggestion-item");
+      items.forEach((el, idx) => {
+        el.classList.toggle("selected", idx === this.selectedIndex);
+        if (idx === this.selectedIndex) {
+          el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        }
+      });
+    }
+    render(results, query, isSuggestions = false) {
+      this.selectedIndex = -1;
+      this._ensureElements();
+      if (!this.container) return;
+      if (!results || results.length === 0) {
+        this.container.innerHTML = `
+        <div class="suggestions-empty-state">
+          <div class="suggestions-empty-icon">\u{1F50D}</div>
+          <div class="suggestions-empty-title">No user found</div>
+          <div class="suggestions-empty-subtitle">
+            No matches for <strong>"${this._escapeHtml(query)}"</strong>.
+            <div class="suggestions-search-tip">
+              \u{1F4A1} <strong>Best ways to search:</strong><br/>
+              \u2022 By <strong>Full Name</strong> (e.g. <em>John Doe</em>)<br/>
+              \u2022 By <strong>Username</strong> with or without @ (e.g. <em>@john</em> or <em>john</em>)<br/>
+              \u2022 By <strong>User ID</strong> (e.g. <em>YM-123456</em> or <em>123456</em>)<br/>
+              \u2022 By <strong>Birthday / DOB</strong> (e.g. <em>YYYY-MM-DD</em> or <em>DD/MM</em>)
+            </div>
+          </div>
+        </div>
+      `;
+        this.open();
+        return;
+      }
+      const headerTitle = isSuggestions ? `<span>\u2728 People You May Know</span>` : `<span>Matches (${results.length})</span>`;
+      const html = `
+      <div class="suggestions-header">
+        ${headerTitle}
+        <span class="suggestions-hint">Search by Name, @Username, User ID, or DOB</span>
+      </div>
+      <div class="suggestions-list" role="listbox">
+        ${results.map((u, idx) => this._renderItem(u, query, idx)).join("")}
+      </div>
+      <div class="suggestions-footer">
+        <button type="button" class="btn-goto-find-friends-global" id="btn-suggestions-more">
+          Browse all users in Find Friends &rarr;
+        </button>
+      </div>
+    `;
+      this.container.innerHTML = html;
+      this._bindItemEvents();
+      this.open();
+    }
+    _renderItem(u, query, index) {
+      const status = friendService.getFriendshipStatus(u.userId);
+      let actionBtn = "";
+      let badgeClass = "status-none";
+      let badgeText = "User";
+      if (u.isSelf) {
+        actionBtn = `
+        <button type="button" class="btn-3d btn-glass btn-suggestion-self" data-user-id="${u.userId}" title="Your Profile" style="padding: 6px 12px; font-size: 11.5px; opacity: 0.9;">
+          \u{1F464} You
+        </button>
+      `;
+        badgeClass = "status-friend";
+        badgeText = "Your Account";
+      } else if (status === "friends") {
+        actionBtn = `
+        <button type="button" class="btn-3d btn-primary btn-suggestion-chat" data-user-id="${u.userId}" title="Open chat">
+          \u{1F4AC} Friends
+        </button>
+      `;
+        badgeClass = "status-friend";
+        badgeText = "Friends \u2713";
+      } else if (status === "request_sent") {
+        actionBtn = `
+        <button type="button" class="btn-3d btn-glass btn-suggestion-cancel" data-user-id="${u.userId}" title="Click to cancel request">
+          Request Sent
+        </button>
+      `;
+        badgeClass = "status-pending";
+        badgeText = "Request Sent";
+      } else if (status === "request_received") {
+        actionBtn = `
+        <button type="button" class="btn-3d btn-primary btn-suggestion-respond" data-user-id="${u.userId}" title="Accept connection">
+          Accept Request
+        </button>
+      `;
+        badgeClass = "status-incoming";
+        badgeText = "Pending";
+      } else {
+        actionBtn = `
+        <button type="button" class="btn-3d btn-primary btn-suggestion-add" data-user-id="${u.userId}" title="Send friend request">
+          \u2795 Add Friend
+        </button>
+      `;
+        badgeClass = "status-none";
+        badgeText = "Registered User";
+      }
+      const isOnline = u.onlineStatus === "online";
+      const avatarImg = u.profilePicture || APP_CONFIG.defaultAvatar;
+      const displayName = u.displayName || u.name;
+      const nameDisplay = this._highlightMatch(displayName, query);
+      const usernameDisplay = this._highlightMatch("@" + u.username, query.replace(/^@+/, ""));
+      const idDisplay = this._highlightMatch(u.userId, query.replace(/[^a-z0-9]/gi, ""));
+      const dobValue = u.dob || u.birthday || "";
+      const dobDisplay = dobValue ? `<span class="user-dob-badge" style="font-size: 10.5px; color: var(--text-muted); margin-left: 6px;">\u{1F382} ${this._highlightMatch(dobValue, query)}</span>` : "";
+      return `
+      <div class="suggestion-item card-3d" data-index="${index}" data-user-id="${u.userId}">
+        <div class="avatar-wrap">
+          <img src="${avatarImg}" class="avatar-img avatar-sm" alt="${displayName}" onerror="this.src='${APP_CONFIG.defaultAvatar}'" />
+          <span class="avatar-status ${isOnline ? "online" : ""}"></span>
+        </div>
+        <div class="suggestion-info">
+          <div class="suggestion-top-row">
+            <span class="suggestion-name">${nameDisplay}</span>
+            <span class="suggestion-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="suggestion-mid-row">
+            <span class="suggestion-username">${usernameDisplay}</span>
+            <span class="user-id-badge" title="User ID: Click to copy" data-copy-id="${u.userId}">
+              \u{1F194} ${idDisplay}
+            </span>
+            ${dobDisplay}
+          </div>
+        </div>
+        <div class="suggestion-actions">
+          ${actionBtn}
+        </div>
+      </div>
+    `;
+    }
+    _bindItemEvents() {
+      this.container.querySelectorAll(".suggestion-item").forEach((el) => {
+        el.addEventListener("click", (e) => {
+          if (e.target.closest(".suggestion-actions") || e.target.closest("[data-copy-id]")) return;
+          const userId = el.dataset.userId;
+          const user = userService.getUserById(userId);
+          if (user) {
+            this.selectUser(user);
+          }
+        });
+      });
+      this.container.querySelectorAll("[data-copy-id]").forEach((badge) => {
+        badge.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const idToCopy = badge.dataset.copyId;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(idToCopy).then(() => {
+              toast.success(`Copied ID: ${idToCopy} \u{1F4CB}`);
+            }).catch(() => {
+              toast.info(`ID: ${idToCopy}`);
+            });
+          } else {
+            toast.info(`ID: ${idToCopy}`);
+          }
+        });
+      });
+      this.container.querySelectorAll(".btn-suggestion-chat").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const userId = btn.dataset.userId;
+          const conv = chatService.getOrCreateConversation(userId);
+          this.close();
+          if (this.onOpenConversation) {
+            this.onOpenConversation(conv.conversationId);
+          }
+        });
+      });
+      this.container.querySelectorAll(".btn-suggestion-add").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const userId = btn.dataset.userId;
+          try {
+            const user = userService.getUserById(userId);
+            friendService.sendFriendRequest(userId);
+            const name = user ? `${user.name} (${user.userId})` : userId;
+            toast.success(`Friend request sent to ${name}! \u{1F48C}`);
+            window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+            this.search(this.input.value);
+          } catch (err) {
+            toast.error(err.message);
+          }
+        });
+      });
+      this.container.querySelectorAll(".btn-suggestion-cancel").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const userId = btn.dataset.userId;
+          friendService.cancelSentRequest(userId);
+          toast.info("Request canceled.");
+          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+          this.search(this.input.value);
+        });
+      });
+      this.container.querySelectorAll(".btn-suggestion-respond").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const userId = btn.dataset.userId;
+          try {
+            const incoming = friendService.getIncomingRequests();
+            const req = incoming.find((r) => r.sender && r.sender.userId === userId);
+            if (req) {
+              friendService.acceptFriendRequest(req.requestId);
+              toast.success("Friend request accepted! Chat unlocked \u2728");
+              window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+              this.search(this.input.value);
+            } else if (this.onOpenFriendsView) {
+              this.close();
+              this.onOpenFriendsView("requests");
+            }
+          } catch (err) {
+            toast.error(err.message);
+          }
+        });
+      });
+      this.container.querySelectorAll(".btn-suggestion-self").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.close();
+          if (this.onOpenProfileView) {
+            this.onOpenProfileView();
+          } else if (this.onOpenFriendsView) {
+            this.onOpenFriendsView("profile");
+          }
+        });
+      });
+      this.container.querySelector("#btn-suggestions-more")?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.close();
+        if (this.onOpenFriendsView) {
+          this.onOpenFriendsView("search");
+        }
+      });
+    }
+    selectUser(user) {
+      if (!user) return;
+      this.close();
+      if (user.isSelf) {
+        if (this.onOpenProfileView) {
+          this.onOpenProfileView();
+        } else if (this.onOpenFriendsView) {
+          this.onOpenFriendsView("profile");
+        }
+        return;
+      }
+      const conv = chatService.getOrCreateConversation(user.userId);
+      if (this.onOpenConversation) {
+        this.onOpenConversation(conv.conversationId);
+      }
+    }
+    _highlightMatch(text, query) {
+      if (!text) return "";
+      if (!query || !query.trim()) return this._escapeHtml(text);
+      const q = query.trim();
+      const cleanQ = q.replace(/[^a-zA-Z0-9]/g, "");
+      if (!cleanQ) return this._escapeHtml(text);
+      try {
+        const regex = new RegExp(`(${cleanQ})`, "gi");
+        return this._escapeHtml(text).replace(regex, '<mark class="search-highlight">$1</mark>');
+      } catch (e) {
+        return this._escapeHtml(text);
+      }
+    }
+    _escapeHtml(str) {
+      if (!str) return "";
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+    open() {
+      this.isOpen = true;
+      this._ensureElements();
+      if (this.container) {
+        this.container.style.display = "flex";
+        this.container.classList.add("active");
+      }
+    }
+    close() {
+      this.isOpen = false;
+      this._ensureElements();
+      if (this.container) {
+        this.container.style.display = "none";
+        this.container.classList.remove("active");
+      }
+      this.selectedIndex = -1;
     }
   };
 
@@ -3198,6 +5028,7 @@
       this.profileView = null;
       this.settingsView = null;
       this.notificationsView = null;
+      this.searchSuggestions = null;
       this.init();
     }
     init() {
@@ -3210,6 +5041,19 @@
       this.profileView = new ProfileView();
       this.settingsView = new SettingsView(() => this._handleLogout());
       this.notificationsView = new NotificationsView((convId) => this.openConversation(convId));
+      this.searchSuggestions = new SearchSuggestions({
+        inputId: "sidebar-search-input",
+        containerId: "sidebar-search-suggestions",
+        onOpenConversation: (convId) => this.openConversation(convId),
+        onOpenProfileView: () => this.switchView("profile"),
+        onOpenFriendsView: (subtab, query = "") => {
+          this.switchView("friends");
+          if (this.friendsView) {
+            this.friendsView.currentSubTab = subtab;
+            this.friendsView.render(query);
+          }
+        }
+      });
       this._bindGlobalEvents();
       this._bindRealtimeEvents();
       this._runLoadingSequence();
@@ -3281,6 +5125,9 @@
       }
     }
     openConversation(convId) {
+      if (this.searchSuggestions) {
+        this.searchSuggestions.close();
+      }
       this.switchView("chats");
       const chatScreen = document.getElementById("chat-screen");
       const welcomePlaceholder = document.getElementById("chat-welcome-placeholder");
@@ -3290,6 +5137,14 @@
       this.chatView.openConversation(convId);
     }
     switchView(viewName) {
+      if (!viewName) return;
+      try {
+        if (this.searchSuggestions) {
+          this.searchSuggestions.close();
+        }
+      } catch (e) {
+        console.warn("Search suggestions close safe guard:", e);
+      }
       this.previousView = this.currentView;
       this.currentView = viewName;
       const dashboard = document.getElementById("app-dashboard");
@@ -3317,17 +5172,29 @@
         }
         if (sidebarList) sidebarList.style.display = "flex";
         if (sidebarSearch) sidebarSearch.style.display = "block";
-        this.chatListView.render();
+        if (this.chatListView) {
+          try {
+            this.chatListView.render();
+          } catch (e) {
+            console.error("chatListView render failed:", e);
+          }
+        }
       } else {
         if (chatScreen) chatScreen.style.display = "none";
         if (welcomePlaceholder) welcomePlaceholder.style.display = "none";
         const targetSubview = document.getElementById(`${viewName}-view`);
         if (targetSubview) targetSubview.classList.add("active");
-        if (viewName === "friends") this.friendsView.render();
-        else if (viewName === "profile") this.profileView.render();
-        else if (viewName === "settings") this.settingsView.render();
-        else if (viewName === "notifications") this.notificationsView.render();
-        this.chatView.closeConversation();
+        try {
+          if (viewName === "friends" && this.friendsView) this.friendsView.render();
+          else if (viewName === "profile" && this.profileView) this.profileView.render();
+          else if (viewName === "settings" && this.settingsView) this.settingsView.render();
+          else if (viewName === "notifications" && this.notificationsView) this.notificationsView.render();
+        } catch (renderErr) {
+          console.error(`Error rendering subview ${viewName}:`, renderErr);
+        }
+        if (this.chatView) {
+          this.chatView.closeConversation();
+        }
       }
       this._updateBadges();
     }
@@ -3351,19 +5218,44 @@
         });
       });
       const searchInput = document.getElementById("sidebar-search-input");
+      const clearBtn = document.getElementById("sidebar-search-clear-btn");
       if (searchInput) {
         searchInput.addEventListener("input", (e) => {
-          this.chatListView.render(e.target.value);
+          const val = e.target.value;
+          if (clearBtn) {
+            clearBtn.style.display = val ? "flex" : "none";
+          }
+          this.chatListView.render(val);
+        });
+      }
+      if (clearBtn) {
+        clearBtn.addEventListener("click", () => {
+          if (searchInput) {
+            searchInput.value = "";
+            clearBtn.style.display = "none";
+            this.chatListView.render("");
+            if (this.searchSuggestions) {
+              this.searchSuggestions.search("");
+            }
+            searchInput.focus();
+          }
         });
       }
       document.addEventListener("click", (e) => {
-        const backBtn = e.target.closest(".mobile-subview-back-btn");
-        if (backBtn) {
-          e.preventDefault();
-          this.switchView("chats");
-          return;
+        const viewBtn = e.target.closest("[data-view]");
+        if (viewBtn) {
+          const view = viewBtn.dataset.view;
+          if (view && (viewBtn.classList.contains("nav-tab-btn") || viewBtn.classList.contains("mobile-nav-item") || viewBtn.classList.contains("notif-bell-btn") || viewBtn.classList.contains("mobile-subview-back-btn") || viewBtn.id === "btn-welcome-find-friends" || viewBtn.id === "btn-welcome-profile")) {
+            e.preventDefault();
+            this.switchView(view);
+            if (view === "friends" && viewBtn.id === "btn-welcome-find-friends" && this.friendsView) {
+              this.friendsView.currentSubTab = "search";
+              this.friendsView.render();
+            }
+            return;
+          }
         }
-        const findFriendsBtn = e.target.closest("#btn-empty-find-friends, #btn-welcome-find-friends");
+        const findFriendsBtn = e.target.closest("#btn-empty-find-friends");
         if (findFriendsBtn) {
           e.preventDefault();
           this.switchView("friends");
@@ -3373,23 +5265,32 @@
           }
           return;
         }
-        const welcomeProfileBtn = e.target.closest("#btn-welcome-profile");
-        if (welcomeProfileBtn) {
-          e.preventDefault();
-          this.switchView("profile");
-          return;
-        }
       });
       window.addEventListener("ym:notification_added", () => {
         this._updateBadges();
+        if (this.currentView === "notifications" && this.notificationsView) {
+          this.notificationsView.render();
+        }
       });
       window.addEventListener("ym:notifications_updated", () => {
         this._updateBadges();
+        if (this.currentView === "notifications" && this.notificationsView) {
+          this.notificationsView.render();
+        }
       });
       window.addEventListener("ym:friends_updated", () => {
         this._updateBadges();
         if (this.currentView === "friends" && this.friendsView) {
           this.friendsView.render();
+        }
+        if (this.chatListView) {
+          this.chatListView.render();
+        }
+      });
+      window.addEventListener("ym:conversation_unlocked", (e) => {
+        this._updateBadges();
+        if (this.chatListView) {
+          this.chatListView.render();
         }
       });
     }

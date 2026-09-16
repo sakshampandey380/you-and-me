@@ -1,12 +1,14 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
-   Chat View Controller (Active Conversation, 3D Bubbles, Composer, Reactions)
+   Chat View Controller (Active Conversation, 3D Bubbles, Composer, Media, Translation)
+   "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 import { chatService } from '../services/chat.js';
 import { userService } from '../services/user.js';
 import { auth } from '../services/auth.js';
 import { realtime } from '../services/realtime.js';
+import { translationService } from '../services/translation.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
 import { mediaViewer } from '../components/mediaViewer.js';
@@ -20,6 +22,7 @@ export class ChatView {
     this.replyTargetMessage = null; // { id, senderName, text }
     this.activeContextMenu = null;
     this.emojiPicker = null;
+    this.translatedMessages = new Map(); // msgId -> { text, originalText, targetLang }
 
     this.container = document.getElementById('chat-screen');
     this.messagesContainer = document.getElementById('chat-messages');
@@ -54,11 +57,15 @@ export class ChatView {
     if (!partner) return;
 
     // Update Header
-    document.getElementById('chat-header-avatar').src = partner.profilePicture;
-    document.getElementById('chat-header-name').textContent = partner.name;
+    const avatarEl = document.getElementById('chat-header-avatar');
+    if (avatarEl) avatarEl.src = partner.profilePicture || partner.avatar;
+    const nameEl = document.getElementById('chat-header-name');
+    if (nameEl) nameEl.textContent = partner.name;
     const statusEl = document.getElementById('chat-header-status');
-    statusEl.textContent = partner.onlineStatus === 'online' ? 'Online' : `Last seen ${partner.lastSeen || 'recently'}`;
-    statusEl.className = `chat-header-status ${partner.onlineStatus === 'online' ? 'online' : ''}`;
+    if (statusEl) {
+      statusEl.textContent = partner.onlineStatus === 'online' ? 'Online' : `Last seen ${partner.lastSeen || 'recently'}`;
+      statusEl.className = `chat-header-status ${partner.onlineStatus === 'online' ? 'online' : ''}`;
+    }
 
     this.cancelReply();
     this.closeSearch();
@@ -70,6 +77,35 @@ export class ChatView {
     document.querySelector('.app-dashboard')?.classList.add('in-chat');
 
     this.scrollToBottom();
+  }
+
+  closeSearch() {
+    if (this.searchBar) {
+      this.searchBar.classList.remove('active');
+      this.searchBar.style.display = 'none';
+    }
+    const searchInput = document.getElementById('chat-search-input');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+  }
+
+  toggleSearch() {
+    if (!this.searchBar) return;
+    const isVisible = this.searchBar.classList.contains('active') || this.searchBar.style.display === 'flex';
+    const searchInput = document.getElementById('chat-search-input');
+
+    if (isVisible) {
+      this.closeSearch();
+      this.renderMessages('');
+    } else {
+      this.searchBar.classList.add('active');
+      this.searchBar.style.display = 'flex';
+      if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
+      }
+    }
   }
 
   closeConversation() {
@@ -94,6 +130,7 @@ export class ChatView {
     if (!conv) return;
 
     const current = auth.getCurrentUser();
+    const currentUid = current ? String(current.uid || current.userId || '').toUpperCase() : '';
     this.messagesContainer.innerHTML = '';
 
     let lastSenderId = null;
@@ -101,8 +138,18 @@ export class ChatView {
 
     conv.messages.forEach(msg => {
       // Check if deleted for me
-      if (msg.deletedFor && msg.deletedFor.includes(current.userId)) {
+      if (msg.deletedFor && msg.deletedFor.map(id => String(id).toUpperCase()).includes(currentUid)) {
         return;
+      }
+
+      // Filter by in-chat search query if searching
+      if (searchQuery) {
+        const textToMatch = String(msg.text || '').toLowerCase();
+        const fileNameToMatch = String(msg.fileName || '').toLowerCase();
+        const q = searchQuery.toLowerCase();
+        if (!textToMatch.includes(q) && !fileNameToMatch.includes(q)) {
+          return;
+        }
       }
 
       // Date Separator
@@ -116,7 +163,7 @@ export class ChatView {
         lastDateStr = dateStr;
       }
 
-      const isOutgoing = msg.senderId === current.userId;
+      const isOutgoing = String(msg.senderId).toUpperCase() === currentUid;
       const isConsecutive = lastSenderId === msg.senderId;
       lastSenderId = msg.senderId;
 
@@ -132,7 +179,7 @@ export class ChatView {
         contentHtml += `
           <div class="quoted-message-box" data-reply-to-id="${msg.replyTo.id}">
             <div class="quoted-sender">${msg.replyTo.senderName}</div>
-            <div class="quoted-text">${msg.replyTo.text}</div>
+            <div class="quoted-text">${this._escapeHtml(msg.replyTo.text)}</div>
           </div>
         `;
       }
@@ -145,14 +192,14 @@ export class ChatView {
           <div class="message-image-wrap" data-img-url="${msg.mediaUrl}">
             <img src="${msg.mediaUrl}" alt="Photo message" />
           </div>
-          ${msg.text ? `<div style="margin-top:6px;">${msg.text}</div>` : ''}
+          ${msg.text ? `<div style="margin-top:6px;">${this._formatFormattedText(msg.text, searchQuery)}</div>` : ''}
         `;
       } else if (msg.type === 'video') {
         contentHtml += `
           <div class="message-video-wrap">
-            <video src="${msg.mediaUrl}" controls></video>
+            <video src="${msg.mediaUrl}" controls style="max-width: 100%; border-radius: 12px;"></video>
           </div>
-          ${msg.text ? `<div style="margin-top:6px;">${msg.text}</div>` : ''}
+          ${msg.text ? `<div style="margin-top:6px;">${this._formatFormattedText(msg.text, searchQuery)}</div>` : ''}
         `;
       } else if (msg.type === 'file') {
         contentHtml += `
@@ -161,11 +208,11 @@ export class ChatView {
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
             </div>
             <div class="message-file-details">
-              <div class="message-file-name">${msg.fileName || 'Document'}</div>
-              <div class="message-file-size">${msg.fileSize || 'File'}</div>
+              <div class="message-file-name">${this._escapeHtml(msg.fileName || 'Document')}</div>
+              <div class="message-file-size">${this._escapeHtml(msg.fileSize || 'File')}</div>
             </div>
           </a>
-          ${msg.text ? `<div style="margin-top:4px;">${msg.text}</div>` : ''}
+          ${msg.text ? `<div style="margin-top:4px;">${this._formatFormattedText(msg.text, searchQuery)}</div>` : ''}
         `;
       } else {
         // Text or large emoji
@@ -174,13 +221,28 @@ export class ChatView {
           row.classList.add('emoji-row');
           contentHtml += `<div class="message-bubble emoji-only">${msg.text}</div>`;
         } else {
-          // Highlight search if searching
-          let text = msg.text;
-          if (searchQuery && text.toLowerCase().includes(searchQuery.toLowerCase())) {
-            const regex = new RegExp(`(${searchQuery})`, 'gi');
-            text = text.replace(regex, `<mark style="background:var(--color-romantic-pink); color:#fff; border-radius:3px; padding:0 2px;">$1</mark>`);
+          // Check if this message was translated
+          const translation = this.translatedMessages.get(msg.id);
+          const activeText = translation ? translation.text : msg.text;
+          const formatted = this._formatFormattedText(activeText, searchQuery);
+
+          contentHtml += `<div>${formatted}</div>`;
+
+          if (translation) {
+            contentHtml += `
+              <div class="translation-toggle-bar" data-msg-id="${msg.id}" style="font-size: 11px; color: var(--color-cyan-accent); margin-top: 5px; cursor: pointer; display: flex; align-items: center; gap: 4px; user-select: none;">
+                <span>🌐 Translated to ${translation.targetLang}</span>
+                <span style="opacity: 0.8; text-decoration: underline;">(Show Original)</span>
+              </div>
+            `;
+          } else if (!isOutgoing && msg.text && msg.text.length > 1) {
+            // Quick subtle translation action on incoming text
+            contentHtml += `
+              <div class="quick-translate-btn" data-msg-id="${msg.id}" style="font-size: 10.5px; opacity: 0.6; margin-top: 4px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; user-select: none;">
+                <span>🌐 Translate</span>
+              </div>
+            `;
           }
-          contentHtml += `<div>${text}</div>`;
         }
       }
 
@@ -217,7 +279,7 @@ export class ChatView {
         const reactionsBar = document.createElement('div');
         reactionsBar.className = 'message-reactions';
         msg.reactions.forEach(r => {
-          const isReactedByMe = r.userIds.includes(current.userId);
+          const isReactedByMe = r.userIds.map(id => String(id).toUpperCase()).includes(currentUid);
           const pill = document.createElement('span');
           pill.className = `reaction-pill ${isReactedByMe ? 'reacted-by-me' : ''}`;
           pill.innerHTML = `${r.emoji} <span style="font-size:11px; opacity:0.85;">${r.userIds.length}</span>`;
@@ -230,7 +292,7 @@ export class ChatView {
         row.appendChild(reactionsBar);
       }
 
-      // Bubble interactions: Click on image opens lightbox, context menu on click/touch
+      // Bubble interactions: Click on image opens lightbox
       const imgWrap = row.querySelector('.message-image-wrap');
       if (imgWrap) {
         imgWrap.addEventListener('click', (e) => {
@@ -248,53 +310,147 @@ export class ChatView {
           const targetRow = this.messagesContainer.querySelector(`[data-msg-id="${targetId}"]`);
           if (targetRow) {
             targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            targetRow.style.filter = 'brightness(1.5)';
-            setTimeout(() => targetRow.style.filter = '', 1000);
+            targetRow.classList.add('highlight-pulse');
+            setTimeout(() => targetRow.classList.remove('highlight-pulse'), 1200);
           }
         });
       }
 
-      // Context menu trigger (right click or tap)
-      const bubble = row.querySelector('.message-bubble') || row;
-      bubble.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
-        this._showContextMenu(e, msg, isOutgoing);
-      });
+      // Quick Translate trigger
+      const quickTransBtn = row.querySelector('.quick-translate-btn');
+      if (quickTransBtn) {
+        quickTransBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.translateMessage(msg.id, msg.text);
+        });
+      }
+
+      // Toggle back to original translation trigger
+      const transToggleBar = row.querySelector('.translation-toggle-bar');
+      if (transToggleBar) {
+        transToggleBar.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.translatedMessages.delete(msg.id);
+          this.renderMessages(searchQuery);
+        });
+      }
+
+      // Context menu
+      const bubble = row.querySelector('.message-bubble');
+      if (bubble) {
+        bubble.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          this._showContextMenu(e, msg, isOutgoing);
+        });
+
+        // Long-press for mobile
+        let pressTimer;
+        bubble.addEventListener('touchstart', (e) => {
+          pressTimer = setTimeout(() => {
+            const touch = e.touches[0];
+            this._showContextMenu({ clientX: touch.clientX, clientY: touch.clientY }, msg, isOutgoing);
+          }, 500);
+        }, { passive: true });
+
+        bubble.addEventListener('touchend', () => clearTimeout(pressTimer));
+        bubble.addEventListener('touchmove', () => clearTimeout(pressTimer));
+      }
 
       this.messagesContainer.appendChild(row);
     });
 
-    // Re-append typing row at the bottom
-    if (this.typingRow) {
-      this.messagesContainer.appendChild(this.typingRow);
+    if (searchQuery && this.messagesContainer.children.length === 0) {
+      this.messagesContainer.innerHTML = `
+        <div class="empty-state" style="padding: 40px 20px;">
+          <div class="empty-state-icon">🔍</div>
+          <div class="empty-state-title">No messages found</div>
+          <div class="empty-state-text">No messages matching "<strong>${this._escapeHtml(searchQuery)}</strong>" in this chat.</div>
+        </div>
+      `;
     }
+  }
+
+  async translateMessage(msgId, text) {
+    if (!msgId || !text) return;
+
+    try {
+      const userLang = translationService.getUserPreferredLanguage();
+      const targetLang = userLang === 'Hindi' ? 'Hindi' : 'English';
+      const result = await translationService.translate(text, targetLang);
+
+      if (result.isTranslated) {
+        this.translatedMessages.set(msgId, {
+          text: result.text,
+          originalText: text,
+          targetLang: result.targetLang
+        });
+        this.renderMessages();
+        toast.info(`Translated to ${result.targetLang} 🌐`);
+      } else {
+        toast.info("Message is already in the preferred language.");
+      }
+    } catch (e) {
+      toast.error("Translation unavailable.");
+    }
+  }
+
+  _formatFormattedText(text, searchQuery = '') {
+    if (!text) return '';
+    let escaped = this._escapeHtml(text);
+
+    // Inline formatting (Requirement 26)
+    // 1. Bold: *text* or **text**
+    escaped = escaped.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    escaped = escaped.replace(/(^|[^*])\*(?!\s)([^*]+)(?!\s)\*(?=[^*]|$)/g, '$1<strong>$2</strong>');
+    // 2. Italic: _text_
+    escaped = escaped.replace(/(^|[^_])_(?!\s)([^_]+)(?!\s)_(?=[^_]|$)/g, '$1<em>$2</em>');
+    // 3. Strikethrough: ~text~
+    escaped = escaped.replace(/(^|[^~])~(?!\s)([^~]+)(?!\s)~(?=[^~]|$)/g, '$1<del>$2</del>');
+    // 4. Code: `code`
+    escaped = escaped.replace(/`([^`]+)`/g, '<code style="background:rgba(0,0,0,0.25); padding:2px 6px; border-radius:4px; font-family:var(--font-mono); font-size:0.9em;">$1</code>');
+    // 5. Autolink URLs
+    escaped = escaped.replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" style="color:var(--color-cyan-accent); text-decoration:underline;">$1</a>');
+
+    // Highlight search if searching
+    if (searchQuery) {
+      const cleanQ = this._escapeHtml(searchQuery);
+      try {
+        const regex = new RegExp(`(${cleanQ})`, 'gi');
+        escaped = escaped.replace(regex, `<mark style="background:var(--color-romantic-pink); color:#fff; border-radius:3px; padding:0 2px;">$1</mark>`);
+      } catch (e) {}
+    }
+
+    return escaped;
   }
 
   _showContextMenu(e, msg, isOutgoing) {
     this._closeContextMenu();
 
     const menu = document.createElement('div');
-    menu.className = 'message-context-menu active';
+    menu.className = 'message-context-menu card-3d';
 
-    // Quick reactions dock at top of menu
-    const quickReacts = ['❤️', '😂', '👍', '😮', '😢', '🔥', '👏'];
-    let reactDockHtml = `<div style="display:flex; gap:6px; padding:4px 6px; border-bottom:1px solid var(--glass-border); margin-bottom:4px;">`;
-    quickReacts.forEach(emoji => {
-      reactDockHtml += `<span class="quick-react-btn" data-emoji="${emoji}">${emoji}</span>`;
-    });
-    reactDockHtml += `</div>`;
+    const reactions = ['❤️', '😂', '👍', '😮', '😢', '🔥', '👏'];
 
     menu.innerHTML = `
-      ${reactDockHtml}
+      <div class="quick-reactions-dock">
+        ${reactions.map(r => `<button class="quick-react-btn" data-emoji="${r}">${r}</button>`).join('')}
+      </div>
+      <div class="context-menu-divider"></div>
       <div class="context-menu-item" data-action="reply">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
         Reply
       </div>
-      <div class="context-menu-item" data-action="copy">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-        Copy Text
-      </div>
-      <div class="context-menu-item" data-action="delete-me">
+      ${msg.text ? `
+        <div class="context-menu-item" data-action="translate">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Translate (Hindi/English)
+        </div>
+        <div class="context-menu-item" data-action="copy">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          Copy Text
+        </div>
+      ` : ''}
+      <div class="context-menu-item danger" data-action="delete-me">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
         Delete for me
       </div>
@@ -308,7 +464,7 @@ export class ChatView {
 
     // Position menu safely
     const x = Math.min(window.innerWidth - 200, Math.max(10, e.clientX || 50));
-    const y = Math.min(window.innerHeight - 240, Math.max(10, e.clientY || 50));
+    const y = Math.min(window.innerHeight - 260, Math.max(10, e.clientY || 50));
     menu.style.left = `${x}px`;
     menu.style.top = `${y}px`;
 
@@ -323,6 +479,11 @@ export class ChatView {
     // Bind actions
     menu.querySelector('[data-action="reply"]')?.addEventListener('click', () => {
       this.startReply(msg);
+      this._closeContextMenu();
+    });
+
+    menu.querySelector('[data-action="translate"]')?.addEventListener('click', () => {
+      this.translateMessage(msg.id, msg.text);
       this._closeContextMenu();
     });
 
@@ -386,7 +547,8 @@ export class ChatView {
 
   startReply(msg) {
     const current = auth.getCurrentUser();
-    const isMe = msg.senderId === current.userId;
+    const currentUid = current ? String(current.uid || current.userId || '') : '';
+    const isMe = String(msg.senderId).toUpperCase() === currentUid.toUpperCase();
     const senderName = isMe ? "You" : (document.getElementById('chat-header-name')?.textContent || "Friend");
 
     this.replyTargetMessage = {
@@ -439,6 +601,36 @@ export class ChatView {
       this.cancelReply();
     });
 
+    // In-Chat Search Bar Toggle & Live Filtering
+    const searchToggleBtn = document.getElementById('chat-search-toggle-btn');
+    const searchInput = document.getElementById('chat-search-input');
+    const searchCloseBtn = document.getElementById('chat-search-close-btn');
+
+    if (searchToggleBtn) {
+      searchToggleBtn.addEventListener('click', () => {
+        this.toggleSearch();
+      });
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        this.renderMessages(e.target.value.trim());
+      });
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          this.closeSearch();
+          this.renderMessages('');
+        }
+      });
+    }
+
+    if (searchCloseBtn) {
+      searchCloseBtn.addEventListener('click', () => {
+        this.closeSearch();
+        this.renderMessages('');
+      });
+    }
+
     // Send Button
     document.getElementById('composer-send-btn')?.addEventListener('click', () => {
       this.sendCurrentTextMessage();
@@ -448,7 +640,7 @@ export class ChatView {
     if (this.composerTextarea) {
       this.composerTextarea.addEventListener('input', () => this._autoGrowTextarea());
       this.composerTextarea.addEventListener('keydown', (e) => {
-        const settings = storage.get('settings') || {};
+        const settings = storage.get('app_settings') || {};
         const enterToSend = settings.enterToSend !== false;
 
         if (enterToSend && e.key === 'Enter' && !e.shiftKey) {
@@ -478,6 +670,13 @@ export class ChatView {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Size check: 1.8MB limit for local storage
+        if (file.size > 1.8 * 1024 * 1024) {
+          toast.error("This file is too large to store locally.");
+          fileInput.value = '';
+          return;
+        }
+
         let type = 'file';
         if (file.type.startsWith('image/')) type = 'image';
         else if (file.type.startsWith('video/')) type = 'video';
@@ -487,18 +686,22 @@ export class ChatView {
           const dataUrl = evt.target.result;
           const result = await mediaPreview.show({ file, dataUrl, type });
           if (result.confirmed) {
-            const sentMsg = chatService.sendMessage(this.currentConvId, {
-              type: type,
-              text: result.caption || '',
-              mediaUrl: dataUrl,
-              fileName: file.name,
-              fileSize: `${(file.size / 1024).toFixed(1)} KB`,
-              replyTo: this.replyTargetMessage
-            });
-            this.cancelReply();
-            this.renderMessages();
-            this.scrollToBottom();
-            realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+            try {
+              const sentMsg = chatService.sendMessage(this.currentConvId, {
+                type: type,
+                text: result.caption || '',
+                mediaUrl: dataUrl,
+                fileName: file.name,
+                fileSize: `${(file.size / 1024).toFixed(1)} KB`,
+                replyTo: this.replyTargetMessage
+              });
+              this.cancelReply();
+              this.renderMessages();
+              this.scrollToBottom();
+              realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+            } catch (err) {
+              toast.error(err.message || "This file is too large to store locally.");
+            }
           }
           fileInput.value = '';
         };
@@ -519,30 +722,10 @@ export class ChatView {
       this.renderMessages(e.target.value.trim());
     });
 
-    // Simulated Voice Call Button
+    // Voice Call feature indicator
     document.getElementById('chat-call-btn')?.addEventListener('click', () => {
       toast.info("📞 Secure 3D voice call feature ready for WebRTC connection!");
     });
-  }
-
-  toggleSearch() {
-    if (this.searchBar) {
-      const isActive = this.searchBar.classList.toggle('active');
-      if (isActive) {
-        document.getElementById('chat-search-input')?.focus();
-      } else {
-        this.renderMessages();
-      }
-    }
-  }
-
-  closeSearch() {
-    if (this.searchBar) {
-      this.searchBar.classList.remove('active');
-      const input = document.getElementById('chat-search-input');
-      if (input) input.value = '';
-      this.renderMessages();
-    }
   }
 
   sendCurrentTextMessage() {
@@ -551,20 +734,23 @@ export class ChatView {
     const text = this.composerTextarea.value.trim();
     if (!text) return;
 
-    const sentMsg = chatService.sendMessage(this.currentConvId, {
-      type: "text",
-      text: text,
-      replyTo: this.replyTargetMessage
-    });
+    try {
+      const sentMsg = chatService.sendMessage(this.currentConvId, {
+        type: "text",
+        text: text,
+        replyTo: this.replyTargetMessage
+      });
 
-    this.composerTextarea.value = '';
-    this._autoGrowTextarea();
-    this.cancelReply();
-    this.renderMessages();
-    this.scrollToBottom();
+      this.composerTextarea.value = '';
+      this._autoGrowTextarea();
+      this.cancelReply();
+      this.renderMessages();
+      this.scrollToBottom();
 
-    // Trigger Realtime simulation
-    realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+      realtime.handleUserSentMessage(this.currentConvId, sentMsg);
+    } catch (err) {
+      toast.error(err.message || "Failed to send message.");
+    }
   }
 
   _autoGrowTextarea() {
@@ -587,8 +773,17 @@ export class ChatView {
     if (!text) return false;
     const clean = text.trim();
     if (clean.length > 8) return false;
-    // Regex checking for pure emojis
     const emojiRegex = /^(?:[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|\u{FE0F})+$/u;
     return emojiRegex.test(clean);
+  }
+
+  _escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 }

@@ -1,10 +1,12 @@
 # You & Me — 3D Chat Application
-### *"Connect. Chat. Share. Together."*
-#### **Made by Sakcham ❤️**
 
-[![Vercel Deployment](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://vercel.com)
-[![Platform](https://img.shields.io/badge/Architecture-Plain%20JavaScript%20(ES%20Modules)-8a3ffc)](#)
-[![Theme](https://img.shields.io/badge/3D%20Experience-Dark%20%26%20Light%20Glass-ff3366)](#)
+## *"Connect. Chat. Share. Together."*
+
+### **Made by Saksham ❤️**
+
+![Vercel Deployment](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)
+![Platform](https://img.shields.io/badge/Architecture-Plain%20JavaScript%20(ES%20Modules)-8a3ffc)
+![Theme](https://img.shields.io/badge/3D%20Experience-Dark%20%26%20Light%20Glass-ff3366)
 
 ---
 
@@ -21,6 +23,7 @@ It brings a breathtaking romantic and futuristic 3D aesthetic to modern messagin
 Because **You & Me** is built with zero-build plain JavaScript and static assets, it deploys directly onto **Vercel** in seconds:
 
 ### Option A: Import via Git (Easiest)
+
 1. Push this folder to a GitHub, GitLab, or Bitbucket repository.
 2. Go to [Vercel Dashboard](https://vercel.com/new).
 3. Click **Import Project** and select your repository.
@@ -28,6 +31,7 @@ Because **You & Me** is built with zero-build plain JavaScript and static assets
 5. Click **Deploy** — your live 3D chat application will be live immediately!
 
 ### Option B: Deploy via Vercel CLI
+
 ```bash
 # In the project directory:
 npx vercel
@@ -39,18 +43,22 @@ npx vercel
 
 To run the application locally on any computer:
 
-### Using Python:
+### Using Python
+
 ```bash
 python -m http.server 3000
 ```
+
 Then open `http://localhost:3000` in your browser.
 
-### Using Node.js:
+### Using Node.js
+
 ```bash
 npx serve .
 ```
 
-### Using VS Code:
+### Using VS Code
+
 Right-click `index.html` and select **Open with Live Server**.
 
 ---
@@ -58,33 +66,37 @@ Right-click `index.html` and select **Open with Live Server**.
 ## ✨ Features
 
 ### 1. 3D Romantic Atmosphere & Visual Identity
+
 * **Romantic 3D Auth Scene**: A couple sitting on a park bench under a softly glowing streetlamp, crescent moon, twinkling stars, gentle fireflies, and 3D floating glowing hearts drifting in spatial depth.
 * **Continuous 3D Spatial Canvas**: Floating translucent spheres, connected communication network nodes, and responsive mouse/touch parallax.
 * **3D Glassmorphism**: Layered glass cards (`backdrop-filter: blur`), dynamic ambient lighting, and subtle 3D hover elevations.
 * **Theme System**: Seamless toggle between **Dark 3D Theme** (deep space glass) and **Light 3D Theme** (crystalline frosted glass), with a real-time **3D Depth Intensity Slider**.
-* **Creator Signature**: Permanent, elegant **“Made by Sakcham ❤️”** glass signature with gently pulsing heart, placed responsively across desktop and mobile screens.
+* **Creator Signature**: Permanent, elegant **“Made by Saksham ❤️”** glass signature with gently pulsing heart, placed responsively across desktop and mobile screens.
 
 ### 2. Authentication & User Model
+
 * **Sign Up**: Full Name, Username, Email, Password, Confirm Password, and custom Profile Picture uploader.
 * **Unique User ID**: Automatically generates a unique ID (e.g. `YM-482913`).
-* **Log In**: Quick login with email/username/ID, remember me checkbox, and pre-seeded demo access (`alex` / `password123`).
+* **Log In**: Quick login with email/username/ID, and remember me checkbox.
 * **Session Management**: Persistent LocalStorage with session isolation.
 
 ### 3. Friends & Connection System
+
 * **Global User Search**: Instant search by Name, Username, or `YM-` User ID.
 * **Friend Requests**: Send, cancel, accept, or reject friend requests with live counter badges.
 * **Friends List**: View connected friends, start private chats, view profile cards, or remove friends.
 
 ### 4. Advanced Messaging & 3D Chat
+
 * **3D Message Bubbles**: Incoming glass bubbles vs outgoing rose-purple glowing bubbles with timestamps, edited tags, and delivery status checkmarks (`✓`, `✓✓`, `✓✓ Read`).
 * **Interactive Realtime Simulation**:
-  - Automatically updates message delivery progression (`sent` -> `delivered` -> `read`).
-  - Active conversation typing indicators (*“Alex is typing…”* with animated bouncing dots).
-  - Contextual friendly auto-replies when messaging demo friends.
+  * Automatically updates message delivery progression (`sent` -> `delivered` -> `read`).
+  * Active conversation typing indicators with animated bouncing dots.
+  * Contextual friendly auto-replies when messaging demo friends.
 * **Rich Media Handling**:
-  - **Photos/Images**: In-chat rendering with pre-send confirmation preview, caption support, and full-screen 3D lightbox viewer (zoom, download, close).
-  - **Videos**: Responsive video player with custom controls and full-screen viewer.
-  - **Documents/Files**: PDF, DOCX, ZIP, TXT attachments with file icons, file size, and direct downloads.
+  * **Photos/Images**: In-chat rendering with pre-send confirmation preview, caption support, and full-screen 3D lightbox viewer (zoom, download, close).
+  * **Videos**: Responsive video player with custom controls and full-screen viewer.
+  * **Documents/Files**: PDF, DOCX, ZIP, TXT attachments with file icons, file size, and direct downloads.
 * **Emoji Picker**: Categorized emojis (Love & Romance, Smileys, Gestures, Vibes) with instant search. Emoji-only messages get special enlarged 3D visual treatment.
 * **Message Context Menu**: Long-press / right-click to access quick reaction dock, Quoted Reply, Copy Text, Delete for me, or Delete for everyone.
 * **Reactions**: Add or toggle reactions (`❤️`, `😂`, `👍`, `😮`, `😢`, `🔥`, `👏`) with animated pills.
@@ -92,10 +104,12 @@ Right-click `index.html` and select **Open with Live Server**.
 * **In-Chat Search**: Live search with highlighted match navigation.
 
 ### 5. Notifications & Sound
+
 * **Web Audio API Sound Engine**: Zero-asset, synthesized futuristic chime notifications for sends, incoming messages, and alerts.
 * **Notification Center**: Slide-out tray with unread counters, mark all as read, and toast popups.
 
 ### 6. Mobile-First Architecture
+
 * Fluid responsive drawer & mobile bottom navigation bar (`Chats`, `Friends`, `Profile`, `Settings`).
 * Thumb-friendly composer that avoids mobile keyboard issues.
 * The creator signature adapts responsively to the bottom of scrollable views and is never placed inside the active message input.
@@ -159,5 +173,6 @@ you-and-me/
 ---
 
 ## 💖 Signature
-**Made by Sakcham ❤️**  
+
+**Made by Saksham ❤️**  
 *“Connect. Chat. Share. Together.”*

@@ -1,36 +1,42 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
-   Chat Service (Conversations, Messages, Media, Reactions, Replies, Search)
+   Chat Service (UID-Based Conversations, Messages, Media, Reactions)
+   "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 import { storage } from './storage.js';
 import { auth } from './auth.js';
 import { sound } from './sound.js';
+import { notificationService } from './notification.js';
 
 class ChatService {
   _getConversations() {
-    return storage.get('conversations') || [];
+    return storage.get('app_conversations') || [];
   }
 
   _saveConversations(convs) {
-    storage.set('conversations', convs);
+    return storage.set('app_conversations', convs);
   }
 
-  _resolveId(id) {
+  _getCurrentUid() {
     const current = auth.getCurrentUser();
-    if (id === "CURRENT_USER" && current) return current.userId;
-    return id;
+    return current ? String(current.uid || current.userId || '') : null;
   }
 
   getConversations() {
-    const current = auth.getCurrentUser();
-    if (!current) return [];
+    const currentUid = this._getCurrentUid();
+    if (!currentUid) return [];
 
     const convs = this._getConversations();
+    const me = currentUid.toUpperCase();
+
     return convs
-      .filter(c => c.participants.map(p => this._resolveId(p)).includes(current.userId))
+      .filter(c => {
+        if (!c || !Array.isArray(c.participants)) return false;
+        return c.participants.some(p => String(p).toUpperCase() === me);
+      })
       .map(c => {
-        const otherId = c.participants.map(p => this._resolveId(p)).find(id => id !== current.userId);
+        const otherId = c.participants.find(p => String(p).toUpperCase() !== me);
         const lastMsg = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
         return {
           ...c,
@@ -39,21 +45,22 @@ class ChatService {
         };
       })
       .sort((a, b) => {
-        const timeA = a.lastMessage ? new Date(a.lastMessage.timestamp).getTime() : new Date(a.createdAt).getTime();
-        const timeB = b.lastMessage ? new Date(b.lastMessage.timestamp).getTime() : new Date(b.createdAt).getTime();
+        const timeA = a.lastMessage ? new Date(a.lastMessage.timestamp).getTime() : new Date(a.createdAt || 0).getTime();
+        const timeB = b.lastMessage ? new Date(b.lastMessage.timestamp).getTime() : new Date(b.createdAt || 0).getTime();
         return timeB - timeA;
       });
   }
 
   getConversationById(convId) {
-    const current = auth.getCurrentUser();
-    if (!current) return null;
+    const currentUid = this._getCurrentUid();
+    if (!currentUid || !convId) return null;
 
     const convs = this._getConversations();
     const conv = convs.find(c => c.conversationId === convId);
     if (!conv) return null;
 
-    const otherId = conv.participants.map(p => this._resolveId(p)).find(id => id !== current.userId);
+    const me = currentUid.toUpperCase();
+    const otherId = conv.participants.find(p => String(p).toUpperCase() !== me);
     return {
       ...conv,
       otherParticipantId: otherId
@@ -61,30 +68,43 @@ class ChatService {
   }
 
   getOrCreateConversation(targetUserId) {
-    const current = auth.getCurrentUser();
-    if (!current) throw new Error("Please log in first.");
+    const currentUid = this._getCurrentUid();
+    if (!currentUid) throw new Error("Please log in first.");
 
     const convs = this._getConversations();
+    const me = currentUid.toUpperCase();
+    const target = String(targetUserId).toUpperCase();
+
     let conv = convs.find(c => {
-      const parts = c.participants.map(p => this._resolveId(p));
-      return parts.includes(current.userId) && parts.includes(targetUserId);
+      if (!c || !Array.isArray(c.participants)) return false;
+      const parts = c.participants.map(p => String(p).toUpperCase());
+      return parts.includes(me) && parts.includes(target);
     });
 
     if (!conv) {
-      conv = {
-        conversationId: "conv-" + Date.now(),
-        participants: [current.userId, targetUserId],
-        createdAt: new Date().toISOString(),
-        unreadCount: 0,
-        messages: []
-      };
-      convs.unshift(conv);
-      this._saveConversations(convs);
+      // Deterministic conversation ID based on sorted UIDs
+      const sortedUids = [currentUid, String(targetUserId)].sort();
+      const stableConvId = `conv-${sortedUids[0]}_${sortedUids[1]}`;
+
+      // Double check if existing by stable ID
+      conv = convs.find(c => c.conversationId === stableConvId);
+
+      if (!conv) {
+        conv = {
+          conversationId: stableConvId,
+          participants: [currentUid, String(targetUserId)],
+          createdAt: new Date().toISOString(),
+          unreadCount: 0,
+          messages: []
+        };
+        convs.unshift(conv);
+        this._saveConversations(convs);
+      }
     }
 
     return {
       ...conv,
-      otherParticipantId: targetUserId
+      otherParticipantId: String(targetUserId)
     };
   }
 
@@ -92,6 +112,7 @@ class ChatService {
     const current = auth.getCurrentUser();
     if (!current) throw new Error("Please log in first.");
 
+    const currentUid = current.uid || current.userId;
     const convs = this._getConversations();
     const conv = convs.find(c => c.conversationId === convId);
     if (!conv) throw new Error("Conversation not found.");
@@ -100,7 +121,7 @@ class ChatService {
 
     const newMsg = {
       id: messageId,
-      senderId: current.userId,
+      senderId: currentUid,
       type: type, // 'text' | 'image' | 'video' | 'file'
       text: text ? text.trim() : "",
       mediaUrl: mediaUrl || null,
@@ -113,22 +134,54 @@ class ChatService {
     };
 
     conv.messages.push(newMsg);
-    this._saveConversations(convs);
 
-    sound.playMessageSent();
+    // Save with quota handling
+    try {
+      this._saveConversations(convs);
+    } catch (err) {
+      // Rollback message from in-memory array if write failed
+      conv.messages.pop();
+      throw new Error("This file is too large to store locally.");
+    }
+
+    try {
+      sound.playMessageSent();
+    } catch (e) {}
+
+    // Deliver notification to partner if they are not in the conversation
+    const otherParticipantId = conv.participants.find(p => String(p).toUpperCase() !== String(currentUid).toUpperCase());
+    if (otherParticipantId) {
+      let previewText = newMsg.text;
+      if (type === 'image') previewText = 'Sent a photo 📷';
+      else if (type === 'video') previewText = 'Sent a video 🎥';
+      else if (type === 'file') previewText = `Sent a file: ${fileName || 'document'} 📎`;
+
+      notificationService.addNotification({
+        type: 'message',
+        title: current.displayName || current.name,
+        message: previewText || 'Sent you a message',
+        fromUserId: currentUid,
+        toUserId: otherParticipantId
+      });
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('ym:storage_changed', { detail: { key: 'app_conversations' } }));
+    }
+
     return newMsg;
   }
 
   editMessage(convId, messageId, newText) {
-    const current = auth.getCurrentUser();
-    if (!current) return null;
+    const currentUid = this._getCurrentUid();
+    if (!currentUid) return null;
 
     const convs = this._getConversations();
     const conv = convs.find(c => c.conversationId === convId);
     if (!conv) return null;
 
     const msg = conv.messages.find(m => m.id === messageId);
-    if (msg && (this._resolveId(msg.senderId) === current.userId)) {
+    if (msg && String(msg.senderId).toUpperCase() === currentUid.toUpperCase()) {
       msg.text = newText.trim();
       msg.edited = true;
       msg.editedAt = new Date().toISOString();
@@ -139,8 +192,8 @@ class ChatService {
   }
 
   deleteMessage(convId, messageId, mode = "everyone") {
-    const current = auth.getCurrentUser();
-    if (!current) return false;
+    const currentUid = this._getCurrentUid();
+    if (!currentUid) return false;
 
     const convs = this._getConversations();
     const conv = convs.find(c => c.conversationId === convId);
@@ -157,8 +210,8 @@ class ChatService {
     } else {
       // Delete for me only
       msg.deletedFor = msg.deletedFor || [];
-      if (!msg.deletedFor.includes(current.userId)) {
-        msg.deletedFor.push(current.userId);
+      if (!msg.deletedFor.includes(currentUid)) {
+        msg.deletedFor.push(currentUid);
       }
     }
 
@@ -167,8 +220,8 @@ class ChatService {
   }
 
   toggleReaction(convId, messageId, emoji) {
-    const current = auth.getCurrentUser();
-    if (!current) return null;
+    const currentUid = this._getCurrentUid();
+    if (!currentUid) return null;
 
     const convs = this._getConversations();
     const conv = convs.find(c => c.conversationId === convId);
@@ -181,22 +234,19 @@ class ChatService {
     let existingReaction = msg.reactions.find(r => r.emoji === emoji);
 
     if (existingReaction) {
-      const userIndex = existingReaction.userIds.map(id => this._resolveId(id)).indexOf(current.userId);
+      const userIndex = existingReaction.userIds.map(id => String(id).toUpperCase()).indexOf(currentUid.toUpperCase());
       if (userIndex !== -1) {
-        // Remove reaction
         existingReaction.userIds.splice(userIndex, 1);
         if (existingReaction.userIds.length === 0) {
           msg.reactions = msg.reactions.filter(r => r.emoji !== emoji);
         }
       } else {
-        // Add reaction
-        existingReaction.userIds.push(current.userId);
+        existingReaction.userIds.push(currentUid);
       }
     } else {
-      // New emoji reaction
       msg.reactions.push({
         emoji: emoji,
-        userIds: [current.userId]
+        userIds: [currentUid]
       });
     }
 
@@ -205,21 +255,27 @@ class ChatService {
   }
 
   markAsRead(convId) {
-    const current = auth.getCurrentUser();
-    if (!current) return;
+    const currentUid = this._getCurrentUid();
+    if (!currentUid) return;
 
     const convs = this._getConversations();
     const conv = convs.find(c => c.conversationId === convId);
     if (!conv) return;
 
     conv.unreadCount = 0;
+    const me = currentUid.toUpperCase();
+    let changed = false;
+
     conv.messages.forEach(m => {
-      if (this._resolveId(m.senderId) !== current.userId && m.status !== "read") {
+      if (String(m.senderId).toUpperCase() !== me && m.status !== "read") {
         m.status = "read";
+        changed = true;
       }
     });
 
-    this._saveConversations(convs);
+    if (changed) {
+      this._saveConversations(convs);
+    }
   }
 
   searchInConversation(convId, query) {
