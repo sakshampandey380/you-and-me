@@ -375,7 +375,7 @@ export class ChatView {
 
     try {
       const userLang = translationService.getUserPreferredLanguage();
-      const targetLang = userLang === 'Hindi' ? 'Hindi' : 'English';
+      const targetLang = userLang || 'English';
       const result = await translationService.translate(text, targetLang);
 
       if (result.isTranslated) {

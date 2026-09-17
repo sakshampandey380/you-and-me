@@ -18,6 +18,7 @@ import { NotificationsView } from './views/notificationsView.js';
 import { friendService } from './services/friend.js';
 import { notificationService } from './services/notification.js';
 import { SearchSuggestions } from './components/searchSuggestions.js';
+import { cloudSync } from './services/cloudSync.js';
 
 class App {
   constructor() {
@@ -114,9 +115,14 @@ class App {
     this._updateGreeting();
     this.chatListView.render();
     this.switchView('chats');
+    cloudSync.pullUsers();
   }
 
   _handleAuthSuccess(user) {
+    if (user) {
+      cloudSync.pushUser(user);
+      cloudSync.pullUsers();
+    }
     this._showDashboard();
   }
 

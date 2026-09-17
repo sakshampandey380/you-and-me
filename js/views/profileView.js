@@ -7,6 +7,7 @@
 import { auth } from '../services/auth.js';
 import { friendService } from '../services/friend.js';
 import { toast } from '../components/toast.js';
+import { SUPPORTED_LANGUAGES } from '../services/translation.js';
 
 export class ProfileView {
   constructor() {
@@ -111,8 +112,9 @@ export class ProfileView {
             <div class="input-group">
               <label class="input-label">Preferred Chat Language</label>
               <select id="edit-language" style="width: 100%; padding: 10px 14px; border-radius: 12px; background: var(--glass-surface-2); color: var(--text-primary); border: 1px solid var(--glass-border); font-family: inherit;">
-                <option value="English" ${user.language === 'Hindi' ? '' : 'selected'}>English</option>
-                <option value="Hindi" ${user.language === 'Hindi' ? 'selected' : ''}>Hindi (हिंदी)</option>
+                ${SUPPORTED_LANGUAGES.map(l => `
+                  <option value="${l.name}" ${(user.language || 'English').toLowerCase() === l.name.toLowerCase() ? 'selected' : ''}>${l.flag} ${l.name} (${l.native})</option>
+                `).join('')}
               </select>
             </div>
             <div class="input-group">

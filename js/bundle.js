@@ -297,6 +297,262 @@
   };
   var storage = new StorageService();
 
+  // js/components/toast.js
+  var ToastService = class {
+    constructor() {
+      this.container = null;
+      this._ensureContainer();
+    }
+    _ensureContainer() {
+      if (!this.container) {
+        this.container = document.querySelector(".toast-container");
+        if (!this.container) {
+          this.container = document.createElement("div");
+          this.container.className = "toast-container";
+          document.body.appendChild(this.container);
+        }
+      }
+    }
+    show(message, type = "info", duration = 3200) {
+      this._ensureContainer();
+      const toast2 = document.createElement("div");
+      toast2.className = `toast-3d toast-${type}`;
+      let iconSvg = "";
+      if (type === "success") {
+        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+      } else if (type === "error") {
+        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+      } else {
+        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
+      }
+      toast2.innerHTML = `
+      <div style="color: ${type === "success" ? "var(--color-success)" : type === "error" ? "var(--color-danger)" : "var(--color-romantic-pink)"}; display:flex; align-items:center;">
+        ${iconSvg}
+      </div>
+      <div style="flex:1; font-size:13.5px; font-weight:500;">${message}</div>
+    `;
+      toast2.addEventListener("click", () => this._dismiss(toast2));
+      this.container.appendChild(toast2);
+      setTimeout(() => {
+        this._dismiss(toast2);
+      }, duration);
+    }
+    _dismiss(toast2) {
+      if (!toast2 || toast2.dataset.dismissed) return;
+      toast2.dataset.dismissed = "true";
+      toast2.style.opacity = "0";
+      toast2.style.transform = "perspective(600px) translateY(-20px) scale(0.9)";
+      setTimeout(() => {
+        if (toast2.parentElement) toast2.parentElement.removeChild(toast2);
+      }, 300);
+    }
+    success(msg) {
+      this.show(msg, "success");
+    }
+    error(msg) {
+      this.show(msg, "error");
+    }
+    info(msg) {
+      this.show(msg, "info");
+    }
+  };
+  var toast = new ToastService();
+
+  // js/services/cloudSync.js
+  var CloudSyncService = class {
+    constructor() {
+      this.isSyncing = false;
+      this.lastSyncTime = null;
+      this.pollInterval = null;
+      this.syncEndpoint = this._resolveSyncEndpoint();
+      this.init();
+    }
+    _resolveSyncEndpoint() {
+      if (APP_CONFIG.cloudSyncUrl) {
+        return APP_CONFIG.cloudSyncUrl;
+      }
+      if (typeof window !== "undefined" && window.location && window.location.origin) {
+        if (window.location.origin.includes("vercel.app")) {
+          return `${window.location.origin}/api/sync`;
+        }
+      }
+      return "https://you-and-me-zeta.vercel.app/api/sync";
+    }
+    init() {
+      if (typeof window === "undefined") return;
+      this._handleUrlConnect();
+      setTimeout(() => {
+        this.pullUsers();
+        const current = auth.getCurrentUser();
+        if (current) {
+          this.pushUser(current);
+        }
+      }, 1200);
+      window.addEventListener("focus", () => this.pullUsers());
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          this.pullUsers();
+        }
+      });
+      this.pollInterval = setInterval(() => {
+        if (document.visibilityState === "visible") {
+          this.pullUsers();
+        }
+      }, 8e3);
+    }
+    /**
+     * Push a registered or updated user to the cloud registry
+     */
+    async pushUser(user) {
+      if (!user || !user.uid && !user.userId) return;
+      try {
+        const endpoint = this._resolveSyncEndpoint();
+        const payload = {
+          uid: user.uid || user.userId,
+          userId: user.uid || user.userId,
+          name: user.name || user.displayName,
+          username: user.username,
+          email: user.email,
+          dob: user.dob || user.birthday || "",
+          language: user.language || "English",
+          bio: user.bio,
+          status: user.status,
+          avatar: user.avatar || user.profilePicture || APP_CONFIG.defaultAvatar
+        };
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          this.lastSyncTime = Date.now();
+        }
+      } catch (err) {
+        console.warn("[CloudSync] Could not push user to cloud:", err.message);
+      }
+    }
+    /**
+     * Pull all registered users from the cloud and merge into LocalStorage
+     */
+    async pullUsers() {
+      if (this.isSyncing) return;
+      this.isSyncing = true;
+      try {
+        const endpoint = this._resolveSyncEndpoint();
+        const res = await fetch(endpoint, {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && Array.isArray(data.users)) {
+            this._mergeUsers(data.users);
+            this.lastSyncTime = Date.now();
+          }
+        }
+      } catch (err) {
+        console.warn("[CloudSync] Could not pull users from cloud:", err.message);
+      } finally {
+        this.isSyncing = false;
+      }
+    }
+    /**
+     * Merge cloud users into local database without duplicate entries
+     */
+    _mergeUsers(cloudUsers) {
+      if (!cloudUsers || cloudUsers.length === 0) return;
+      const localUsers = storage.getUsers();
+      let hasChanges = false;
+      cloudUsers.forEach((cu) => {
+        if (!cu) return;
+        const cUid = String(cu.uid || cu.userId || "").toUpperCase();
+        const cUser = String(cu.username || "").toLowerCase();
+        if (!cUid) return;
+        const existingIndex = localUsers.findIndex((lu) => {
+          const lUid = String(lu.uid || lu.userId || "").toUpperCase();
+          const lUser = String(lu.username || "").toLowerCase();
+          return lUid && lUid === cUid || lUser && lUser === cUser;
+        });
+        if (existingIndex === -1) {
+          localUsers.push({
+            uid: cUid,
+            userId: cUid,
+            name: cu.name || "User",
+            displayName: cu.displayName || cu.name || "User",
+            username: cu.username,
+            email: cu.email || "",
+            avatar: cu.avatar || cu.profilePicture || APP_CONFIG.defaultAvatar,
+            profilePicture: cu.profilePicture || cu.avatar || APP_CONFIG.defaultAvatar,
+            dob: cu.dob || cu.birthday || "",
+            birthday: cu.birthday || cu.dob || "",
+            language: cu.language || "English",
+            bio: cu.bio || "Hey there! I am using You & Me \u{1F680}",
+            status: cu.status || "Available for conversations \u2728",
+            onlineStatus: cu.onlineStatus || "online",
+            lastSeen: cu.lastSeen || "Just now"
+          });
+          hasChanges = true;
+        }
+      });
+      if (hasChanges) {
+        storage.saveUsers(localUsers);
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_users" } }));
+      }
+    }
+    /**
+     * Live lookup if a search query is not found in local cache
+     */
+    async searchOnline(query) {
+      if (!query) return [];
+      await this.pullUsers();
+      return storage.getUsers();
+    }
+    /**
+     * Handle deep-link connect parameter e.g. ?connect=SK-EDIRAV or ?u=ram123
+     */
+    _handleUrlConnect() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetId = urlParams.get("connect") || urlParams.get("user") || urlParams.get("u");
+        if (targetId) {
+          setTimeout(async () => {
+            await this.pullUsers();
+            const users = storage.getUsers();
+            const cleanId = targetId.toLowerCase().trim();
+            const matched = users.find((u) => {
+              const uId = String(u.uid || u.userId || "").toLowerCase();
+              const uUser = String(u.username || "").toLowerCase();
+              return uId === cleanId || uUser === cleanId;
+            });
+            if (matched) {
+              toast.info(`Found user @${matched.username} from connect link! \u2728`);
+              if (window.ymApp) {
+                window.ymApp.switchView("friends");
+                if (window.ymApp.friendsView) {
+                  window.ymApp.friendsView.currentSubTab = "search";
+                  window.ymApp.friendsView.render(matched.username);
+                }
+              }
+            }
+          }, 1500);
+        }
+      } catch (e) {
+      }
+    }
+    /**
+     * Get shareable connect link for current logged in user
+     */
+    getShareableLink() {
+      const user = auth.getCurrentUser();
+      if (!user) return null;
+      const base = typeof window !== "undefined" && window.location.origin.includes("vercel.app") ? window.location.origin : "https://you-and-me-zeta.vercel.app";
+      const uid = user.uid || user.userId;
+      return `${base}/?connect=${encodeURIComponent(uid)}`;
+    }
+  };
+  var cloudSync = new CloudSyncService();
+
   // js/services/auth.js
   var AuthService = class {
     constructor() {
@@ -394,6 +650,7 @@
       users.push(newUser);
       storage.saveUsers(users);
       this._setSession(newUser, true);
+      cloudSync.pushUser(newUser);
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("ym:user_registered", { detail: newUser }));
         window.dispatchEvent(new CustomEvent("ym:friends_updated"));
@@ -472,6 +729,7 @@
         users[index] = { ...users[index], ...updates };
         this.currentUser = users[index];
         storage.saveUsers(users);
+        cloudSync.pushUser(this.currentUser);
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("ym:profile_updated", { detail: this.currentUser }));
           window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_users" } }));
@@ -1251,67 +1509,6 @@
       }
     }
   };
-
-  // js/components/toast.js
-  var ToastService = class {
-    constructor() {
-      this.container = null;
-      this._ensureContainer();
-    }
-    _ensureContainer() {
-      if (!this.container) {
-        this.container = document.querySelector(".toast-container");
-        if (!this.container) {
-          this.container = document.createElement("div");
-          this.container.className = "toast-container";
-          document.body.appendChild(this.container);
-        }
-      }
-    }
-    show(message, type = "info", duration = 3200) {
-      this._ensureContainer();
-      const toast2 = document.createElement("div");
-      toast2.className = `toast-3d toast-${type}`;
-      let iconSvg = "";
-      if (type === "success") {
-        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-      } else if (type === "error") {
-        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
-      } else {
-        iconSvg = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`;
-      }
-      toast2.innerHTML = `
-      <div style="color: ${type === "success" ? "var(--color-success)" : type === "error" ? "var(--color-danger)" : "var(--color-romantic-pink)"}; display:flex; align-items:center;">
-        ${iconSvg}
-      </div>
-      <div style="flex:1; font-size:13.5px; font-weight:500;">${message}</div>
-    `;
-      toast2.addEventListener("click", () => this._dismiss(toast2));
-      this.container.appendChild(toast2);
-      setTimeout(() => {
-        this._dismiss(toast2);
-      }, duration);
-    }
-    _dismiss(toast2) {
-      if (!toast2 || toast2.dataset.dismissed) return;
-      toast2.dataset.dismissed = "true";
-      toast2.style.opacity = "0";
-      toast2.style.transform = "perspective(600px) translateY(-20px) scale(0.9)";
-      setTimeout(() => {
-        if (toast2.parentElement) toast2.parentElement.removeChild(toast2);
-      }, 300);
-    }
-    success(msg) {
-      this.show(msg, "success");
-    }
-    error(msg) {
-      this.show(msg, "error");
-    }
-    info(msg) {
-      this.show(msg, "info");
-    }
-  };
-  var toast = new ToastService();
 
   // js/components/romanticScene.js
   var RomanticScene = class {
@@ -2274,9 +2471,31 @@
   };
 
   // js/services/translation.js
+  var SUPPORTED_LANGUAGES = [
+    { code: "en", name: "English", native: "English", flag: "\u{1F310}" },
+    { code: "hi", name: "Hindi", native: "\u0939\u093F\u0928\u094D\u0926\u0940", flag: "\u{1F1EE}\u{1F1F3}" },
+    { code: "es", name: "Spanish", native: "Espa\xF1ol", flag: "\u{1F1EA}\u{1F1F8}" },
+    { code: "fr", name: "French", native: "Fran\xE7ais", flag: "\u{1F1EB}\u{1F1F7}" },
+    { code: "de", name: "German", native: "Deutsch", flag: "\u{1F1E9}\u{1F1EA}" },
+    { code: "ja", name: "Japanese", native: "\u65E5\u672C\u8A9E", flag: "\u{1F1EF}\u{1F1F5}" },
+    { code: "ko", name: "Korean", native: "\uD55C\uAD6D\uC5B4", flag: "\u{1F1F0}\u{1F1F7}" },
+    { code: "ar", name: "Arabic", native: "\u0627\u0644\u0639\u0631\u0628\u064A\u0629", flag: "\u{1F1F8}\u{1F1E6}" },
+    { code: "ru", name: "Russian", native: "\u0420\u0443\u0441\u0441\u043A\u0438\u0439", flag: "\u{1F1F7}\u{1F1FA}" },
+    { code: "pt", name: "Portuguese", native: "Portugu\xEAs", flag: "\u{1F1F5}\u{1F1F9}" },
+    { code: "it", name: "Italian", native: "Italiano", flag: "\u{1F1EE}\u{1F1F9}" },
+    { code: "zh", name: "Chinese", native: "\u4E2D\u6587", flag: "\u{1F1E8}\u{1F1F3}" },
+    { code: "bn", name: "Bengali", native: "\u09AC\u09BE\u0982\u09B2\u09BE", flag: "\u{1F1EE}\u{1F1F3}" },
+    { code: "mr", name: "Marathi", native: "\u092E\u0930\u093E\u0920\u0940", flag: "\u{1F1EE}\u{1F1F3}" },
+    { code: "te", name: "Telugu", native: "\u0C24\u0C46\u0C32\u0C41\u0C17\u0C41", flag: "\u{1F1EE}\u{1F1F3}" },
+    { code: "ta", name: "Tamil", native: "\u0BA4\u0BAE\u0BBF\u0BB4\u0BCD", flag: "\u{1F1EE}\u{1F1F3}" },
+    { code: "gu", name: "Gujarati", native: "\u0A97\u0AC1\u0A9C\u0AB0\u0ABE\u0AA4\u0AC0", flag: "\u{1F1EE}\u{1F1F3}" },
+    { code: "ur", name: "Urdu", native: "\u0627\u0631\u062F\u0648", flag: "\u{1F1F5}\u{1F1F0}" },
+    { code: "pa", name: "Punjabi", native: "\u0A2A\u0A70\u0A1C\u0A3E\u0A2C\u0A40", flag: "\u{1F1EE}\u{1F1F3}" }
+  ];
   var TranslationService = class {
     constructor() {
       this.customEndpoint = null;
+      this.cache = /* @__PURE__ */ new Map();
       this._initDictionary();
     }
     _initDictionary() {
@@ -2312,7 +2531,7 @@
         "of course": "\u092C\u093F\u0932\u094D\u0915\u0941\u0932",
         "please": "\u0915\u0943\u092A\u092F\u093E",
         "sorry": "\u092E\u093E\u092B\u093C \u0915\u0940\u091C\u093F\u090F",
-        "bye": "\u0905\u0932\u0935\u093Fida",
+        "bye": "\u0905\u0932\u0935\u093F\u0926\u093E",
         "goodbye": "\u0905\u0932\u0935\u093F\u0926\u093E",
         "see you": "\u092B\u093F\u0930 \u092E\u093F\u0932\u0947\u0902\u0917\u0947",
         "see you soon": "\u091C\u0932\u094D\u0926 \u092E\u093F\u0932\u0947\u0902\u0917\u0947 \u2728",
@@ -2391,63 +2610,84 @@
       }
       return "English";
     }
+    getLanguageMeta(langNameOrCode) {
+      if (!langNameOrCode) return SUPPORTED_LANGUAGES[0];
+      const needle = String(langNameOrCode).toLowerCase().trim();
+      return SUPPORTED_LANGUAGES.find(
+        (l) => l.code.toLowerCase() === needle || l.name.toLowerCase() === needle || l.native.toLowerCase() === needle
+      ) || SUPPORTED_LANGUAGES[0];
+    }
     async translate(text, targetLang = null) {
       if (!text || typeof text !== "string") {
         return { text: "", isTranslated: false };
       }
       const trimmed = text.trim();
       if (!trimmed) return { text: "", isTranslated: false };
-      const isSourceHindi = this.isHindi(trimmed);
       let target = targetLang;
       if (!target) {
-        target = isSourceHindi ? "English" : "Hindi";
+        const preferred = this.getUserPreferredLanguage();
+        const isSourceHindi2 = this.isHindi(trimmed);
+        target = preferred === "Hindi" || isSourceHindi2 ? isSourceHindi2 ? "English" : "Hindi" : preferred;
       }
-      if (target === "Hindi" && isSourceHindi) {
-        return { text: trimmed, isTranslated: false, targetLang: "Hindi" };
+      const targetMeta = this.getLanguageMeta(target);
+      const targetCode = targetMeta.code;
+      const targetName = targetMeta.name;
+      const isSourceHindi = this.isHindi(trimmed);
+      if (targetCode === "hi" && isSourceHindi) {
+        return { text: trimmed, isTranslated: false, targetLang: targetName };
       }
-      if (target === "English" && !isSourceHindi && !/[^\x00-\x7F]/.test(trimmed)) {
-        return { text: trimmed, isTranslated: false, targetLang: "English" };
+      if (targetCode === "en" && !isSourceHindi && !/[^\x00-\x7F]/.test(trimmed)) {
+        return { text: trimmed, isTranslated: false, targetLang: targetName };
       }
-      if (this.customEndpoint) {
-        try {
-          const res = await fetch(this.customEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ q: trimmed, target: target === "Hindi" ? "hi" : "en" })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.translatedText) {
-              return {
-                text: data.translatedText,
+      const cacheKey = `${targetCode}:${trimmed}`;
+      if (this.cache.has(cacheKey)) {
+        return this.cache.get(cacheKey);
+      }
+      try {
+        const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=autodetect|${targetCode}`;
+        const res = await fetch(apiUrl);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.responseData && data.responseData.translatedText) {
+            let translated = data.responseData.translatedText;
+            translated = translated.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+            if (translated && translated.toLowerCase() !== trimmed.toLowerCase()) {
+              const result = {
+                text: translated,
                 originalText: trimmed,
                 isTranslated: true,
-                targetLang: target
+                targetLang: targetName
               };
+              this.cache.set(cacheKey, result);
+              return result;
             }
           }
-        } catch (e) {
-          console.warn("[TranslationService] External endpoint failed, falling back to local engine:", e);
         }
+      } catch (e) {
+        console.warn("[TranslationService] Live API request failed, trying local fallback:", e);
       }
       const lower = trimmed.toLowerCase();
-      if (target === "Hindi") {
+      if (targetCode === "hi") {
         if (this.phraseMapEnToHi[lower]) {
-          return {
+          const result = {
             text: this.phraseMapEnToHi[lower],
             originalText: trimmed,
             isTranslated: true,
             targetLang: "Hindi"
           };
+          this.cache.set(cacheKey, result);
+          return result;
         }
         const cleanLower = lower.replace(/[!?.,]/g, "").trim();
         if (this.phraseMapEnToHi[cleanLower]) {
-          return {
+          const result = {
             text: this.phraseMapEnToHi[cleanLower],
             originalText: trimmed,
             isTranslated: true,
             targetLang: "Hindi"
           };
+          this.cache.set(cacheKey, result);
+          return result;
         }
         const words = trimmed.split(/(\s+|[.,!?])/);
         let translatedAny = false;
@@ -2460,36 +2700,43 @@
           return word;
         });
         if (translatedAny) {
-          return {
+          const result = {
             text: translatedWords.join(""),
             originalText: trimmed,
             isTranslated: true,
             targetLang: "Hindi"
           };
+          this.cache.set(cacheKey, result);
+          return result;
         }
-        return {
+        const fallbackResult = {
           text: `[\u0905\u0928\u0941\u0935\u093E\u0926] ${trimmed}`,
           originalText: trimmed,
           isTranslated: true,
           targetLang: "Hindi"
         };
-      } else {
+        return fallbackResult;
+      } else if (targetCode === "en") {
         if (this.phraseMapHiToEn[lower]) {
-          return {
+          const result = {
             text: this.phraseMapHiToEn[lower],
             originalText: trimmed,
             isTranslated: true,
             targetLang: "English"
           };
+          this.cache.set(cacheKey, result);
+          return result;
         }
         const cleanLower = lower.replace(/[!?.,|।]/g, "").trim();
         if (this.phraseMapHiToEn[cleanLower]) {
-          return {
+          const result = {
             text: this.phraseMapHiToEn[cleanLower],
             originalText: trimmed,
             isTranslated: true,
             targetLang: "English"
           };
+          this.cache.set(cacheKey, result);
+          return result;
         }
         const words = trimmed.split(/(\s+|[.,!?|।])/);
         let translatedAny = false;
@@ -2501,12 +2748,14 @@
           return word;
         });
         if (translatedAny) {
-          return {
+          const result = {
             text: translatedWords.join(""),
             originalText: trimmed,
             isTranslated: true,
             targetLang: "English"
           };
+          this.cache.set(cacheKey, result);
+          return result;
         }
         return {
           text: `[Translated] ${trimmed}`,
@@ -2515,6 +2764,12 @@
           targetLang: "English"
         };
       }
+      return {
+        text: `[${targetName}] ${trimmed}`,
+        originalText: trimmed,
+        isTranslated: true,
+        targetLang: targetName
+      };
     }
   };
   var translationService = new TranslationService();
@@ -3074,7 +3329,7 @@
       if (!msgId || !text) return;
       try {
         const userLang = translationService.getUserPreferredLanguage();
-        const targetLang = userLang === "Hindi" ? "Hindi" : "English";
+        const targetLang = userLang || "English";
         const result = await translationService.translate(text, targetLang);
         if (result.isTranslated) {
           this.translatedMessages.set(msgId, {
@@ -3664,7 +3919,10 @@
       this._renderSubTabs();
       if (this.currentSubTab === "my-friends") this._renderFriendsList();
       else if (this.currentSubTab === "requests") this._renderRequestsList();
-      else if (this.currentSubTab === "search") this._renderSearchTab(searchQuery);
+      else if (this.currentSubTab === "search") {
+        this._renderSearchTab(searchQuery);
+        cloudSync.pullUsers();
+      }
     }
     _bindEvents() {
       document.querySelectorAll(".friends-subtab-btn").forEach((btn) => {
@@ -3872,7 +4130,7 @@
       const listContainer = document.getElementById("friends-subview-content");
       if (!listContainer) return;
       const allEnrolled = userService.getAllEnrolledUsers({ excludeSelf: true });
-      const dynamicChipsHtml = allEnrolled.slice(0, 6).map((u) => `
+      const dynamicChipsHtml = allEnrolled.slice(0, 8).map((u) => `
       <button type="button" class="search-chip" data-query="@${u.username}">@${u.username}</button>
     `).join("");
       listContainer.innerHTML = `
@@ -3883,7 +4141,7 @@
             <input type="text" id="user-global-search-input" placeholder="Search by name, @username, User ID (SK-XXXXXX), or DOB..." value="${initialQuery ? this._escapeHtml(initialQuery) : ""}" autofocus />
             <button id="user-global-search-clear" class="search-clear-btn" style="${initialQuery ? "display: flex;" : "display: none;"}" title="Clear search">&times;</button>
           </div>
-          <div class="search-helper-chips">
+          <div class="search-helper-chips" id="search-helper-chips-container">
             <span class="chip-label">Quick Search:</span>
             ${dynamicChipsHtml || '<span style="font-size: 11.5px; color: var(--text-muted);">No other users registered yet</span>'}
           </div>
@@ -3900,13 +4158,39 @@
       const clearBtn = document.getElementById("user-global-search-clear");
       const resultsContainer = document.getElementById("user-search-results");
       const statusBar = document.getElementById("user-search-status-bar");
-      const doSearch = (query) => {
+      const updateChips = () => {
+        const chipsContainer = document.getElementById("search-helper-chips-container");
+        if (!chipsContainer) return;
+        const enrolled = userService.getAllEnrolledUsers({ excludeSelf: true });
+        const chips = enrolled.slice(0, 8).map((u) => `
+        <button type="button" class="search-chip" data-query="@${u.username}">@${u.username}</button>
+      `).join("");
+        chipsContainer.innerHTML = `<span class="chip-label">Quick Search:</span>` + (chips || '<span style="font-size: 11.5px; color: var(--text-muted);">No other users registered yet</span>');
+        chipsContainer.querySelectorAll(".search-chip").forEach((chip) => {
+          chip.addEventListener("click", () => {
+            if (searchInput) {
+              searchInput.value = chip.dataset.query;
+              doSearch(chip.dataset.query);
+              searchInput.focus();
+            }
+          });
+        });
+      };
+      const doSearch = async (query) => {
         const q = String(query || "").trim();
         if (clearBtn) {
           clearBtn.style.display = q ? "flex" : "none";
         }
         const isDefault = !q;
-        const results = isDefault ? userService.getAllEnrolledUsers({ excludeSelf: true }) : userService.searchUsers(q, { excludeSelf: false });
+        let results = isDefault ? userService.getAllEnrolledUsers({ excludeSelf: true }) : userService.searchUsers(q, { excludeSelf: false });
+        if (!isDefault && results.length === 0) {
+          if (statusBar) {
+            statusBar.innerHTML = `\u{1F50D} <span>Searching cloud registry for "<strong>${this._escapeHtml(q)}</strong>"...</span>`;
+          }
+          await cloudSync.pullUsers();
+          results = userService.searchUsers(q, { excludeSelf: false });
+          updateChips();
+        }
         if (statusBar) {
           if (isDefault) {
             statusBar.innerHTML = `\u{1F465} <span>Registered Community Members (${results.length} total)</span>`;
@@ -4169,8 +4453,9 @@
             <div class="input-group">
               <label class="input-label">Preferred Chat Language</label>
               <select id="edit-language" style="width: 100%; padding: 10px 14px; border-radius: 12px; background: var(--glass-surface-2); color: var(--text-primary); border: 1px solid var(--glass-border); font-family: inherit;">
-                <option value="English" ${user.language === "Hindi" ? "" : "selected"}>English</option>
-                <option value="Hindi" ${user.language === "Hindi" ? "selected" : ""}>Hindi (\u0939\u093F\u0902\u0926\u0940)</option>
+                ${SUPPORTED_LANGUAGES.map((l) => `
+                  <option value="${l.name}" ${(user.language || "English").toLowerCase() === l.name.toLowerCase() ? "selected" : ""}>${l.flag} ${l.name} (${l.native})</option>
+                `).join("")}
               </select>
             </div>
             <div class="input-group">
@@ -4292,20 +4577,32 @@
 
         <!-- Language & Translation Section -->
         <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
-          <h3 style="font-size: 15px; font-weight: 700; color: var(--color-cyan-accent); display: flex; align-items: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-            Chat Language & Translation (Hindi / English)
-          </h3>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--color-cyan-accent); display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              Chat Language & Translation
+            </h3>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(0, 242, 254, 0.15); color: var(--color-cyan-accent); font-weight: 600;">19+ Languages</span>
+          </div>
 
-          <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
             <div>
-              <div style="font-weight: 600; font-size: 14px;">Preferred Language</div>
-              <div style="font-size: 12px; color: var(--text-muted);">Used for in-chat message translation</div>
+              <div style="font-weight: 600; font-size: 14px;">Preferred Translation Language</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Incoming chat messages translate to this language with 1 click</div>
             </div>
-            <div style="display: flex; background: rgba(0,0,0,0.25); border-radius: 12px; padding: 4px;">
-              <button class="btn-lang-select ${currentLang === "English" ? "active" : ""}" data-lang="English" style="padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: ${currentLang === "English" ? "#fff" : "var(--text-muted)"}; background: ${currentLang === "English" ? "var(--color-primary)" : "transparent"};">English</button>
-              <button class="btn-lang-select ${currentLang === "Hindi" ? "active" : ""}" data-lang="Hindi" style="padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: ${currentLang === "Hindi" ? "#fff" : "var(--text-muted)"}; background: ${currentLang === "Hindi" ? "var(--color-primary)" : "transparent"};">Hindi (\u0939\u093F\u0902\u0926\u0940)</button>
-            </div>
+            <select id="select-settings-lang" style="min-width: 170px; padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 10px; background: var(--glass-surface-2); color: var(--text-primary); border: 1px solid var(--glass-border); cursor: pointer; outline: none;">
+              ${SUPPORTED_LANGUAGES.map((l) => `
+                <option value="${l.name}" ${currentLang.toLowerCase() === l.name.toLowerCase() ? "selected" : ""}>${l.flag} ${l.name} (${l.native})</option>
+              `).join("")}
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            ${SUPPORTED_LANGUAGES.slice(0, 6).map((l) => `
+              <button type="button" class="btn-lang-quick-chip" data-lang="${l.name}" style="padding: 5px 12px; border-radius: 14px; font-size: 11.5px; font-weight: 600; background: ${currentLang.toLowerCase() === l.name.toLowerCase() ? "var(--color-primary)" : "rgba(255,255,255,0.06)"}; color: ${currentLang.toLowerCase() === l.name.toLowerCase() ? "#fff" : "var(--text-secondary)"}; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;">
+                ${l.flag} ${l.name}
+              </button>
+            `).join("")}
           </div>
         </div>
 
@@ -4388,6 +4685,28 @@
           </div>
         </div>
 
+        <!-- Cross-Device Cloud Sync Section -->
+        <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--color-primary-light); display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+              Cross-Device Cloud Sync
+            </h3>
+            <span id="cloud-sync-status-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(0, 255, 170, 0.15); color: #00ffaa; font-weight: 600;">\u25CF Active</span>
+          </div>
+          <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+            Sync your profile and discover community members across your phone, laptop, and live web app instantly.
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" id="btn-sync-cloud-now" class="btn-3d btn-primary" style="padding: 7px 16px; font-size: 12.5px;">
+              \u{1F504} Sync Cloud Now
+            </button>
+            <button type="button" id="btn-copy-connect-link" class="btn-3d btn-glass" style="padding: 7px 16px; font-size: 12.5px;">
+              \u{1F517} Copy My Connect Link
+            </button>
+          </div>
+        </div>
+
         <!-- Danger & Account Actions -->
         <div class="glass-panel" style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
           <div>
@@ -4422,16 +4741,54 @@
           this.render();
         });
       });
-      document.querySelectorAll(".btn-lang-select").forEach((btn) => {
+      const langSelect = document.getElementById("select-settings-lang");
+      if (langSelect) {
+        langSelect.addEventListener("change", (e) => {
+          const lang = e.target.value;
+          settings.language = lang;
+          storage.set("app_settings", settings);
+          auth.updateCurrentUser({ language: lang });
+          toast.success(`Chat translation language set to ${lang}! \u{1F310}`);
+          this.render();
+        });
+      }
+      document.querySelectorAll(".btn-lang-quick-chip").forEach((btn) => {
         btn.addEventListener("click", () => {
           const lang = btn.dataset.lang;
           settings.language = lang;
           storage.set("app_settings", settings);
           auth.updateCurrentUser({ language: lang });
-          toast.success(`Chat language set to ${lang}! \u{1F310}`);
+          toast.success(`Chat translation language set to ${lang}! \u{1F310}`);
           this.render();
         });
       });
+      const syncNowBtn = document.getElementById("btn-sync-cloud-now");
+      if (syncNowBtn) {
+        syncNowBtn.addEventListener("click", async () => {
+          syncNowBtn.disabled = true;
+          syncNowBtn.textContent = "\u{1F504} Syncing...";
+          await cloudSync.pullUsers();
+          const current = auth.getCurrentUser();
+          if (current) await cloudSync.pushUser(current);
+          toast.success("Synced with cloud registry! All users updated \u2728");
+          this.render();
+        });
+      }
+      const copyLinkBtn = document.getElementById("btn-copy-connect-link");
+      if (copyLinkBtn) {
+        copyLinkBtn.addEventListener("click", () => {
+          const link = cloudSync.getShareableLink();
+          if (link && navigator.clipboard) {
+            navigator.clipboard.writeText(link).then(() => {
+              toast.success("Connect link copied to clipboard! Send to your phone \u{1F4F2}");
+            }).catch(() => {
+              prompt("Copy your connect link:", link);
+            });
+          } else if (link) {
+            prompt("Copy your connect link:", link);
+          }
+        });
+      }
       const depthSlider = document.getElementById("depth-slider");
       const depthLabel = document.getElementById("depth-val-label");
       if (depthSlider) {
@@ -4718,10 +5075,22 @@
       if (!q) {
         this.currentResults = userService.getSuggestedUsers(12, false).filter((u) => !u.isSelf);
         this.render(this.currentResults, "", true);
+        cloudSync.pullUsers();
         return;
       }
       this.currentResults = userService.searchUsers(q, { limit: 12, excludeSelf: false });
       this.render(this.currentResults, q, false);
+      if (this.currentResults.length === 0) {
+        cloudSync.pullUsers().then(() => {
+          if (this.input && this.input.value.trim() === q) {
+            const fresh = userService.searchUsers(q, { limit: 12, excludeSelf: false });
+            if (fresh.length > 0) {
+              this.currentResults = fresh;
+              this.render(fresh, q, false);
+            }
+          }
+        });
+      }
     }
     navigate(dir) {
       if (!this.currentResults || this.currentResults.length === 0) return;
@@ -5095,8 +5464,13 @@
       this._updateGreeting();
       this.chatListView.render();
       this.switchView("chats");
+      cloudSync.pullUsers();
     }
     _handleAuthSuccess(user) {
+      if (user) {
+        cloudSync.pushUser(user);
+        cloudSync.pullUsers();
+      }
       this._showDashboard();
     }
     _handleLogout() {

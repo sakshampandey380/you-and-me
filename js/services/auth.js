@@ -6,6 +6,7 @@
 
 import { APP_CONFIG } from '../config.js';
 import { storage } from './storage.js';
+import { cloudSync } from './cloudSync.js';
 
 class AuthService {
   constructor() {
@@ -123,7 +124,9 @@ class AuthService {
     // Auto login new user
     this._setSession(newUser, true);
 
-    // Broadcast registration across application
+    // Broadcast registration across application & sync with cloud
+    cloudSync.pushUser(newUser);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ym:user_registered', { detail: newUser }));
       window.dispatchEvent(new CustomEvent('ym:friends_updated'));
@@ -226,6 +229,8 @@ class AuthService {
       users[index] = { ...users[index], ...updates };
       this.currentUser = users[index];
       storage.saveUsers(users);
+
+      cloudSync.pushUser(this.currentUser);
 
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('ym:profile_updated', { detail: this.currentUser }));

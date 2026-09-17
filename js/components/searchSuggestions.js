@@ -8,6 +8,7 @@ import { userService } from '../services/user.js';
 import { friendService } from '../services/friend.js';
 import { chatService } from '../services/chat.js';
 import { toast } from './toast.js';
+import { cloudSync } from '../services/cloudSync.js';
 
 export class SearchSuggestions {
   constructor({ inputId, containerId, onOpenConversation, onOpenFriendsView, onOpenProfileView }) {
@@ -95,12 +96,26 @@ export class SearchSuggestions {
       // Show registered users (excluding self)
       this.currentResults = userService.getSuggestedUsers(12, false).filter(u => !u.isSelf);
       this.render(this.currentResults, '', true);
+      cloudSync.pullUsers();
       return;
     }
 
     // Include self when searching so user can see their own account with [You] badge if searched
     this.currentResults = userService.searchUsers(q, { limit: 12, excludeSelf: false });
     this.render(this.currentResults, q, false);
+
+    // If 0 results, query cloud sync in background and re-render if user is found
+    if (this.currentResults.length === 0) {
+      cloudSync.pullUsers().then(() => {
+        if (this.input && this.input.value.trim() === q) {
+          const fresh = userService.searchUsers(q, { limit: 12, excludeSelf: false });
+          if (fresh.length > 0) {
+            this.currentResults = fresh;
+            this.render(fresh, q, false);
+          }
+        }
+      });
+    }
   }
 
   navigate(dir) {

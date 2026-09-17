@@ -11,6 +11,8 @@ import { userService } from '../services/user.js';
 import { sound } from '../services/sound.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
+import { SUPPORTED_LANGUAGES } from '../services/translation.js';
+import { cloudSync } from '../services/cloudSync.js';
 
 export class SettingsView {
   constructor(onLogout) {
@@ -70,20 +72,32 @@ export class SettingsView {
 
         <!-- Language & Translation Section -->
         <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 16px;">
-          <h3 style="font-size: 15px; font-weight: 700; color: var(--color-cyan-accent); display: flex; align-items: center; gap: 8px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-            Chat Language & Translation (Hindi / English)
-          </h3>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--color-cyan-accent); display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+              Chat Language & Translation
+            </h3>
+            <span style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(0, 242, 254, 0.15); color: var(--color-cyan-accent); font-weight: 600;">19+ Languages</span>
+          </div>
 
-          <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
             <div>
-              <div style="font-weight: 600; font-size: 14px;">Preferred Language</div>
-              <div style="font-size: 12px; color: var(--text-muted);">Used for in-chat message translation</div>
+              <div style="font-weight: 600; font-size: 14px;">Preferred Translation Language</div>
+              <div style="font-size: 12px; color: var(--text-muted);">Incoming chat messages translate to this language with 1 click</div>
             </div>
-            <div style="display: flex; background: rgba(0,0,0,0.25); border-radius: 12px; padding: 4px;">
-              <button class="btn-lang-select ${currentLang === 'English' ? 'active' : ''}" data-lang="English" style="padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: ${currentLang === 'English' ? '#fff' : 'var(--text-muted)'}; background: ${currentLang === 'English' ? 'var(--color-primary)' : 'transparent'};">English</button>
-              <button class="btn-lang-select ${currentLang === 'Hindi' ? 'active' : ''}" data-lang="Hindi" style="padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: ${currentLang === 'Hindi' ? '#fff' : 'var(--text-muted)'}; background: ${currentLang === 'Hindi' ? 'var(--color-primary)' : 'transparent'};">Hindi (हिंदी)</button>
-            </div>
+            <select id="select-settings-lang" style="min-width: 170px; padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 10px; background: var(--glass-surface-2); color: var(--text-primary); border: 1px solid var(--glass-border); cursor: pointer; outline: none;">
+              ${SUPPORTED_LANGUAGES.map(l => `
+                <option value="${l.name}" ${currentLang.toLowerCase() === l.name.toLowerCase() ? 'selected' : ''}>${l.flag} ${l.name} (${l.native})</option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            ${SUPPORTED_LANGUAGES.slice(0, 6).map(l => `
+              <button type="button" class="btn-lang-quick-chip" data-lang="${l.name}" style="padding: 5px 12px; border-radius: 14px; font-size: 11.5px; font-weight: 600; background: ${currentLang.toLowerCase() === l.name.toLowerCase() ? 'var(--color-primary)' : 'rgba(255,255,255,0.06)'}; color: ${currentLang.toLowerCase() === l.name.toLowerCase() ? '#fff' : 'var(--text-secondary)'}; border: 1px solid rgba(255,255,255,0.1); cursor: pointer;">
+                ${l.flag} ${l.name}
+              </button>
+            `).join('')}
           </div>
         </div>
 
@@ -169,6 +183,28 @@ export class SettingsView {
           </div>
         </div>
 
+        <!-- Cross-Device Cloud Sync Section -->
+        <div class="glass-panel card-3d" style="padding: 22px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 15px; font-weight: 700; color: var(--color-primary-light); display: flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"></path></svg>
+              Cross-Device Cloud Sync
+            </h3>
+            <span id="cloud-sync-status-badge" style="font-size: 11px; padding: 2px 8px; border-radius: 12px; background: rgba(0, 255, 170, 0.15); color: #00ffaa; font-weight: 600;">● Active</span>
+          </div>
+          <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.5;">
+            Sync your profile and discover community members across your phone, laptop, and live web app instantly.
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" id="btn-sync-cloud-now" class="btn-3d btn-primary" style="padding: 7px 16px; font-size: 12.5px;">
+              🔄 Sync Cloud Now
+            </button>
+            <button type="button" id="btn-copy-connect-link" class="btn-3d btn-glass" style="padding: 7px 16px; font-size: 12.5px;">
+              🔗 Copy My Connect Link
+            </button>
+          </div>
+        </div>
+
         <!-- Danger & Account Actions -->
         <div class="glass-panel" style="padding: 20px; display: flex; justify-content: space-between; align-items: center;">
           <div>
@@ -208,17 +244,59 @@ export class SettingsView {
       });
     });
 
-    // Language Switch
-    document.querySelectorAll('.btn-lang-select').forEach(btn => {
+    // Language Dropdown & Quick Chips
+    const langSelect = document.getElementById('select-settings-lang');
+    if (langSelect) {
+      langSelect.addEventListener('change', (e) => {
+        const lang = e.target.value;
+        settings.language = lang;
+        storage.set('app_settings', settings);
+        auth.updateCurrentUser({ language: lang });
+        toast.success(`Chat translation language set to ${lang}! 🌐`);
+        this.render();
+      });
+    }
+
+    document.querySelectorAll('.btn-lang-quick-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const lang = btn.dataset.lang;
         settings.language = lang;
         storage.set('app_settings', settings);
         auth.updateCurrentUser({ language: lang });
-        toast.success(`Chat language set to ${lang}! 🌐`);
+        toast.success(`Chat translation language set to ${lang}! 🌐`);
         this.render();
       });
     });
+
+    // Cloud Sync Buttons
+    const syncNowBtn = document.getElementById('btn-sync-cloud-now');
+    if (syncNowBtn) {
+      syncNowBtn.addEventListener('click', async () => {
+        syncNowBtn.disabled = true;
+        syncNowBtn.textContent = "🔄 Syncing...";
+        await cloudSync.pullUsers();
+        const current = auth.getCurrentUser();
+        if (current) await cloudSync.pushUser(current);
+        toast.success("Synced with cloud registry! All users updated ✨");
+        this.render();
+      });
+    }
+
+    const copyLinkBtn = document.getElementById('btn-copy-connect-link');
+    if (copyLinkBtn) {
+      copyLinkBtn.addEventListener('click', () => {
+        const link = cloudSync.getShareableLink();
+        if (link && navigator.clipboard) {
+          navigator.clipboard.writeText(link).then(() => {
+            toast.success("Connect link copied to clipboard! Send to your phone 📲");
+          }).catch(() => {
+            prompt("Copy your connect link:", link);
+          });
+        } else if (link) {
+          prompt("Copy your connect link:", link);
+        }
+      });
+    }
 
     // 3D Depth Slider
     const depthSlider = document.getElementById('depth-slider');

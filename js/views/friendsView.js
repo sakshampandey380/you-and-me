@@ -10,6 +10,7 @@ import { userService } from '../services/user.js';
 import { chatService } from '../services/chat.js';
 import { toast } from '../components/toast.js';
 import { modal } from '../components/modal.js';
+import { cloudSync } from '../services/cloudSync.js';
 
 export class FriendsView {
   constructor(onOpenConversation) {
@@ -25,7 +26,11 @@ export class FriendsView {
     this._renderSubTabs();
     if (this.currentSubTab === 'my-friends') this._renderFriendsList();
     else if (this.currentSubTab === 'requests') this._renderRequestsList();
-    else if (this.currentSubTab === 'search') this._renderSearchTab(searchQuery);
+    else if (this.currentSubTab === 'search') {
+      this._renderSearchTab(searchQuery);
+      // Auto-fetch latest registered cloud users
+      cloudSync.pullUsers();
+    }
   }
 
   _bindEvents() {
@@ -257,7 +262,7 @@ export class FriendsView {
     const allEnrolled = userService.getAllEnrolledUsers({ excludeSelf: true });
 
     // Quick chips from actual enrolled accounts
-    const dynamicChipsHtml = allEnrolled.slice(0, 6).map(u => `
+    const dynamicChipsHtml = allEnrolled.slice(0, 8).map(u => `
       <button type="button" class="search-chip" data-query="@${u.username}">@${u.username}</button>
     `).join('');
 
@@ -269,7 +274,7 @@ export class FriendsView {
             <input type="text" id="user-global-search-input" placeholder="Search by name, @username, User ID (SK-XXXXXX), or DOB..." value="${initialQuery ? this._escapeHtml(initialQuery) : ''}" autofocus />
             <button id="user-global-search-clear" class="search-clear-btn" style="${initialQuery ? 'display: flex;' : 'display: none;'}" title="Clear search">&times;</button>
           </div>
-          <div class="search-helper-chips">
+          <div class="search-helper-chips" id="search-helper-chips-container">
             <span class="chip-label">Quick Search:</span>
             ${dynamicChipsHtml || '<span style="font-size: 11.5px; color: var(--text-muted);">No other users registered yet</span>'}
           </div>
@@ -288,16 +293,45 @@ export class FriendsView {
     const resultsContainer = document.getElementById('user-search-results');
     const statusBar = document.getElementById('user-search-status-bar');
 
-    const doSearch = (query) => {
+    const updateChips = () => {
+      const chipsContainer = document.getElementById('search-helper-chips-container');
+      if (!chipsContainer) return;
+      const enrolled = userService.getAllEnrolledUsers({ excludeSelf: true });
+      const chips = enrolled.slice(0, 8).map(u => `
+        <button type="button" class="search-chip" data-query="@${u.username}">@${u.username}</button>
+      `).join('');
+      chipsContainer.innerHTML = `<span class="chip-label">Quick Search:</span>` + (chips || '<span style="font-size: 11.5px; color: var(--text-muted);">No other users registered yet</span>');
+      chipsContainer.querySelectorAll('.search-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          if (searchInput) {
+            searchInput.value = chip.dataset.query;
+            doSearch(chip.dataset.query);
+            searchInput.focus();
+          }
+        });
+      });
+    };
+
+    const doSearch = async (query) => {
       const q = String(query || '').trim();
       if (clearBtn) {
         clearBtn.style.display = q ? 'flex' : 'none';
       }
 
       const isDefault = !q;
-      const results = isDefault 
+      let results = isDefault 
         ? userService.getAllEnrolledUsers({ excludeSelf: true }) 
         : userService.searchUsers(q, { excludeSelf: false });
+
+      // If specific search returns 0 local results, perform a quick cloud search to catch newly registered users on other devices
+      if (!isDefault && results.length === 0) {
+        if (statusBar) {
+          statusBar.innerHTML = `🔍 <span>Searching cloud registry for "<strong>${this._escapeHtml(q)}</strong>"...</span>`;
+        }
+        await cloudSync.pullUsers();
+        results = userService.searchUsers(q, { excludeSelf: false });
+        updateChips();
+      }
 
       if (statusBar) {
         if (isDefault) {

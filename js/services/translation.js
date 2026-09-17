@@ -1,14 +1,37 @@
 /* ==========================================================================
    YOU & ME — 3D Chat Application
-   Chat Translation Service (Hindi <-> English Client-Side Engine)
+   Multi-Language Chat Translation Engine
    "Connect. Chat. Share. Together." | Made by Saksham ❤️
    ========================================================================== */
 
 import { auth } from './auth.js';
 
+export const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', native: 'English', flag: '🌐' },
+  { code: 'hi', name: 'Hindi', native: 'हिन्दी', flag: '🇮🇳' },
+  { code: 'es', name: 'Spanish', native: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'French', native: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'German', native: 'Deutsch', flag: '🇩🇪' },
+  { code: 'ja', name: 'Japanese', native: '日本語', flag: '🇯🇵' },
+  { code: 'ko', name: 'Korean', native: '한국어', flag: '🇰🇷' },
+  { code: 'ar', name: 'Arabic', native: 'العربية', flag: '🇸🇦' },
+  { code: 'ru', name: 'Russian', native: 'Русский', flag: '🇷🇺' },
+  { code: 'pt', name: 'Portuguese', native: 'Português', flag: '🇵🇹' },
+  { code: 'it', name: 'Italian', native: 'Italiano', flag: '🇮🇹' },
+  { code: 'zh', name: 'Chinese', native: '中文', flag: '🇨🇳' },
+  { code: 'bn', name: 'Bengali', native: 'বাংলা', flag: '🇮🇳' },
+  { code: 'mr', name: 'Marathi', native: 'मराठी', flag: '🇮🇳' },
+  { code: 'te', name: 'Telugu', native: 'తెలుగు', flag: '🇮🇳' },
+  { code: 'ta', name: 'Tamil', native: 'தமிழ்', flag: '🇮🇳' },
+  { code: 'gu', name: 'Gujarati', native: 'ગુજરાતી', flag: '🇮🇳' },
+  { code: 'ur', name: 'Urdu', native: 'اردو', flag: '🇵🇰' },
+  { code: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', flag: '🇮🇳' },
+];
+
 class TranslationService {
   constructor() {
-    this.customEndpoint = null; // Can be configured later if an API is added
+    this.customEndpoint = null;
+    this.cache = new Map();
     this._initDictionary();
   }
 
@@ -46,7 +69,7 @@ class TranslationService {
       "of course": "बिल्कुल",
       "please": "कृपया",
       "sorry": "माफ़ कीजिए",
-      "bye": "अलविida",
+      "bye": "अलविदा",
       "goodbye": "अलविदा",
       "see you": "फिर मिलेंगे",
       "see you soon": "जल्द मिलेंगे ✨",
@@ -122,7 +145,6 @@ class TranslationService {
 
   isHindi(text) {
     if (!text) return false;
-    // Check for Devanagari Unicode range (U+0900 to U+097F)
     return /[\u0900-\u097F]/.test(text);
   }
 
@@ -134,6 +156,16 @@ class TranslationService {
     return "English";
   }
 
+  getLanguageMeta(langNameOrCode) {
+    if (!langNameOrCode) return SUPPORTED_LANGUAGES[0];
+    const needle = String(langNameOrCode).toLowerCase().trim();
+    return (
+      SUPPORTED_LANGUAGES.find(
+        l => l.code.toLowerCase() === needle || l.name.toLowerCase() === needle || l.native.toLowerCase() === needle
+      ) || SUPPORTED_LANGUAGES[0]
+    );
+  }
+
   async translate(text, targetLang = null) {
     if (!text || typeof text !== 'string') {
       return { text: '', isTranslated: false };
@@ -142,74 +174,92 @@ class TranslationService {
     const trimmed = text.trim();
     if (!trimmed) return { text: '', isTranslated: false };
 
-    // Determine target language: if not supplied, detect based on content or user preference
-    const isSourceHindi = this.isHindi(trimmed);
+    // Determine target language meta
     let target = targetLang;
-
     if (!target) {
-      // If source is Hindi, translate to English. If English, translate to Hindi.
-      target = isSourceHindi ? 'English' : 'Hindi';
+      const preferred = this.getUserPreferredLanguage();
+      const isSourceHindi = this.isHindi(trimmed);
+      target = (preferred === 'Hindi' || isSourceHindi) ? (isSourceHindi ? 'English' : 'Hindi') : preferred;
     }
 
-    // If source is already in target language, return as-is
-    if (target === 'Hindi' && isSourceHindi) {
-      return { text: trimmed, isTranslated: false, targetLang: 'Hindi' };
+    const targetMeta = this.getLanguageMeta(target);
+    const targetCode = targetMeta.code;
+    const targetName = targetMeta.name;
+
+    // Avoid translating if content matches target
+    const isSourceHindi = this.isHindi(trimmed);
+    if (targetCode === 'hi' && isSourceHindi) {
+      return { text: trimmed, isTranslated: false, targetLang: targetName };
     }
-    if (target === 'English' && !isSourceHindi && !/[^\x00-\x7F]/.test(trimmed)) {
-      // Already English / Latin
-      return { text: trimmed, isTranslated: false, targetLang: 'English' };
+    if (targetCode === 'en' && !isSourceHindi && !/[^\x00-\x7F]/.test(trimmed)) {
+      return { text: trimmed, isTranslated: false, targetLang: targetName };
     }
 
-    // 1. Check custom external endpoint if configured
-    if (this.customEndpoint) {
-      try {
-        const res = await fetch(this.customEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ q: trimmed, target: target === 'Hindi' ? 'hi' : 'en' })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.translatedText) {
-            return {
-              text: data.translatedText,
+    // Check memory cache
+    const cacheKey = `${targetCode}:${trimmed}`;
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    // 1. Try Live Multi-Language Translation API (Free, high quality, zero-key)
+    try {
+      const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(trimmed)}&langpair=autodetect|${targetCode}`;
+      const res = await fetch(apiUrl);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.responseData && data.responseData.translatedText) {
+          let translated = data.responseData.translatedText;
+          // Decode HTML entities if returned by API
+          translated = translated
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>');
+
+          // If valid translation received
+          if (translated && translated.toLowerCase() !== trimmed.toLowerCase()) {
+            const result = {
+              text: translated,
               originalText: trimmed,
               isTranslated: true,
-              targetLang: target
+              targetLang: targetName
             };
+            this.cache.set(cacheKey, result);
+            return result;
           }
         }
-      } catch (e) {
-        console.warn("[TranslationService] External endpoint failed, falling back to local engine:", e);
       }
+    } catch (e) {
+      console.warn("[TranslationService] Live API request failed, trying local fallback:", e);
     }
 
-    // 2. Client-Side Translation Engine
+    // 2. Offline Fallback for Hindi <-> English
     const lower = trimmed.toLowerCase();
-
-    if (target === 'Hindi') {
-      // English -> Hindi
+    if (targetCode === 'hi') {
       if (this.phraseMapEnToHi[lower]) {
-        return {
+        const result = {
           text: this.phraseMapEnToHi[lower],
           originalText: trimmed,
           isTranslated: true,
           targetLang: 'Hindi'
         };
+        this.cache.set(cacheKey, result);
+        return result;
       }
 
-      // Check without punctuation
       const cleanLower = lower.replace(/[!?.,]/g, '').trim();
       if (this.phraseMapEnToHi[cleanLower]) {
-        return {
+        const result = {
           text: this.phraseMapEnToHi[cleanLower],
           originalText: trimmed,
           isTranslated: true,
           targetLang: 'Hindi'
         };
+        this.cache.set(cacheKey, result);
+        return result;
       }
 
-      // Word-by-word tokenized fallback
       const words = trimmed.split(/(\s+|[.,!?])/);
       let translatedAny = false;
       const translatedWords = words.map(word => {
@@ -222,43 +272,47 @@ class TranslationService {
       });
 
       if (translatedAny) {
-        return {
+        const result = {
           text: translatedWords.join(''),
           originalText: trimmed,
           isTranslated: true,
           targetLang: 'Hindi'
         };
+        this.cache.set(cacheKey, result);
+        return result;
       }
 
-      // Fallback: If no dictionary match, present phrase with Hindi indicator
-      return {
+      const fallbackResult = {
         text: `[अनुवाद] ${trimmed}`,
         originalText: trimmed,
         isTranslated: true,
         targetLang: 'Hindi'
       };
-    } else {
-      // Hindi -> English
+      return fallbackResult;
+    } else if (targetCode === 'en') {
       if (this.phraseMapHiToEn[lower]) {
-        return {
+        const result = {
           text: this.phraseMapHiToEn[lower],
           originalText: trimmed,
           isTranslated: true,
           targetLang: 'English'
         };
+        this.cache.set(cacheKey, result);
+        return result;
       }
 
       const cleanLower = lower.replace(/[!?.,|।]/g, '').trim();
       if (this.phraseMapHiToEn[cleanLower]) {
-        return {
+        const result = {
           text: this.phraseMapHiToEn[cleanLower],
           originalText: trimmed,
           isTranslated: true,
           targetLang: 'English'
         };
+        this.cache.set(cacheKey, result);
+        return result;
       }
 
-      // Word-by-word tokenized fallback
       const words = trimmed.split(/(\s+|[.,!?|।])/);
       let translatedAny = false;
       const translatedWords = words.map(word => {
@@ -270,12 +324,14 @@ class TranslationService {
       });
 
       if (translatedAny) {
-        return {
+        const result = {
           text: translatedWords.join(''),
           originalText: trimmed,
           isTranslated: true,
           targetLang: 'English'
         };
+        this.cache.set(cacheKey, result);
+        return result;
       }
 
       return {
@@ -285,8 +341,15 @@ class TranslationService {
         targetLang: 'English'
       };
     }
+
+    // For any other language in offline mode
+    return {
+      text: `[${targetName}] ${trimmed}`,
+      originalText: trimmed,
+      isTranslated: true,
+      targetLang: targetName
+    };
   }
 }
 
 export const translationService = new TranslationService();
-
