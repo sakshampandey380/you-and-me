@@ -404,10 +404,28 @@ export class SearchSuggestions {
       return;
     }
 
-    // Directly open or start conversation with the selected registered user
-    const conv = chatService.getOrCreateConversation(user.userId);
-    if (this.onOpenConversation) {
-      this.onOpenConversation(conv.conversationId);
+    const status = friendService.getFriendshipStatus(user.userId);
+    if (status === 'friends') {
+      const conv = chatService.getOrCreateConversation(user.userId);
+      if (this.onOpenConversation) {
+        this.onOpenConversation(conv.conversationId);
+      }
+    } else if (status === 'request_sent') {
+      toast.info(`Friend request is pending with @${user.username}. Chat is locked until accepted.`);
+      const conv = chatService.getOrCreateConversation(user.userId);
+      if (this.onOpenConversation) {
+        this.onOpenConversation(conv.conversationId);
+      }
+    } else if (status === 'request_received') {
+      toast.info(`@${user.username} sent you a friend request. Accept it in Requests to chat! 💌`);
+      if (this.onOpenFriendsView) {
+        this.onOpenFriendsView('requests');
+      }
+    } else {
+      toast.info(`Send a friend request to @${user.username} first to unlock chat.`);
+      if (this.onOpenFriendsView) {
+        this.onOpenFriendsView('search');
+      }
     }
   }
 

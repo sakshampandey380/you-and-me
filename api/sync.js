@@ -150,7 +150,9 @@ export default async function handler(req, res) {
       // 2. SEND FRIEND REQUEST
       if (action === 'send_friend_request') {
         const reqData = payload.request;
-        if (!reqData || !reqData.from || !reqData.to) {
+        const fromId = reqData?.from || reqData?.senderId;
+        const toId = reqData?.to || reqData?.receiverId;
+        if (!reqData || !fromId || !toId) {
           return res.status(400).json({ success: false, message: 'Invalid friend request payload' });
         }
 

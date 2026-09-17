@@ -15,6 +15,8 @@ import { mediaViewer } from '../components/mediaViewer.js';
 import { mediaPreview } from '../components/mediaPreview.js';
 import { EmojiPicker } from '../components/emojiPicker.js';
 import { storage } from '../services/storage.js';
+import { friendService } from '../services/friend.js';
+import { cloudSync } from '../services/cloudSync.js';
 
 export class ChatView {
   constructor() {
@@ -47,6 +49,7 @@ export class ChatView {
 
   openConversation(convId) {
     this.currentConvId = convId;
+    cloudSync.setActiveConversation(convId);
     realtime.setActiveConversation(convId);
     chatService.markAsRead(convId);
 
@@ -65,6 +68,52 @@ export class ChatView {
     if (statusEl) {
       statusEl.textContent = partner.onlineStatus === 'online' ? 'Online' : `Last seen ${partner.lastSeen || 'recently'}`;
       statusEl.className = `chat-header-status ${partner.onlineStatus === 'online' ? 'online' : ''}`;
+    }
+
+    // Friendship verification & lock
+    const isFriend = friendService.getFriendshipStatus(partner.uid || partner.userId) === 'friends';
+    const composerArea = document.querySelector('.chat-composer-area');
+    let lockedNotice = document.getElementById('chat-locked-notice');
+
+    if (!isFriend) {
+      if (!lockedNotice && composerArea) {
+        lockedNotice = document.createElement('div');
+        lockedNotice.id = 'chat-locked-notice';
+        lockedNotice.style.cssText = 'background: rgba(255, 51, 102, 0.12); border: 1px solid rgba(255, 51, 102, 0.3); border-radius: 12px; padding: 12px 16px; margin: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 5;';
+        lockedNotice.innerHTML = `
+          <div style="font-size: 13px; color: var(--color-romantic-rose); display: flex; align-items: center; gap: 8px;">
+            <span>🔒</span>
+            <span>Chat is locked until <strong>@${partner.username}</strong> accepts your friend request.</span>
+          </div>
+          <button type="button" class="btn-3d btn-primary btn-goto-requests-locked" style="font-size: 11.5px; padding: 5px 12px;">View Requests</button>
+        `;
+        composerArea.parentElement.insertBefore(lockedNotice, composerArea);
+        lockedNotice.querySelector('.btn-goto-requests-locked')?.addEventListener('click', () => {
+          if (window.ymApp) {
+            window.ymApp.switchView('friends');
+            if (window.ymApp.friendsView) {
+              window.ymApp.friendsView.currentSubTab = 'requests';
+              window.ymApp.friendsView.render();
+            }
+          }
+        });
+      }
+      if (composerArea) composerArea.style.opacity = '0.4';
+      if (this.composerTextarea) {
+        this.composerTextarea.disabled = true;
+        this.composerTextarea.placeholder = 'Chat locked until friend request is accepted...';
+      }
+      const sendBtn = document.getElementById('composer-send-btn');
+      if (sendBtn) sendBtn.style.pointerEvents = 'none';
+    } else {
+      if (lockedNotice) lockedNotice.remove();
+      if (composerArea) composerArea.style.opacity = '1';
+      if (this.composerTextarea) {
+        this.composerTextarea.disabled = false;
+        this.composerTextarea.placeholder = 'Type a message...';
+      }
+      const sendBtn = document.getElementById('composer-send-btn');
+      if (sendBtn) sendBtn.style.pointerEvents = 'auto';
     }
 
     this.cancelReply();
@@ -110,7 +159,20 @@ export class ChatView {
 
   closeConversation() {
     this.currentConvId = null;
+    cloudSync.setActiveConversation(null);
     realtime.setActiveConversation(null);
+
+    const lockedNotice = document.getElementById('chat-locked-notice');
+    if (lockedNotice) lockedNotice.remove();
+    const composerArea = document.querySelector('.chat-composer-area');
+    if (composerArea) composerArea.style.opacity = '1';
+    if (this.composerTextarea) {
+      this.composerTextarea.disabled = false;
+      this.composerTextarea.placeholder = 'Type a message...';
+    }
+    const sendBtn = document.getElementById('composer-send-btn');
+    if (sendBtn) sendBtn.style.pointerEvents = 'auto';
+
     document.querySelector('.app-sidebar')?.classList.remove('chat-open');
     document.querySelector('.app-main-view')?.classList.remove('chat-open');
     document.querySelector('.app-dashboard')?.classList.remove('in-chat');
@@ -725,6 +787,51 @@ export class ChatView {
     // Voice Call feature indicator
     document.getElementById('chat-call-btn')?.addEventListener('click', () => {
       toast.info("📞 Secure 3D voice call feature ready for WebRTC connection!");
+    });
+
+    // Live Cloud / Realtime Message Updates & Status Changes
+    window.addEventListener('ym:message_received', (e) => {
+      if (this.currentConvId && e.detail && e.detail.conversationId === this.currentConvId) {
+        chatService.markAsRead(this.currentConvId);
+        this.renderMessages();
+        this.scrollToBottom();
+      }
+    });
+
+    window.addEventListener('ym:message_status_update', (e) => {
+      if (this.currentConvId && (!e.detail || !e.detail.conversationId || e.detail.conversationId === this.currentConvId)) {
+        this.renderMessages();
+      }
+    });
+
+    window.addEventListener('ym:conversations_updated', (e) => {
+      if (this.currentConvId) {
+        this.renderMessages();
+      }
+    });
+
+    window.addEventListener('ym:friends_updated', () => {
+      if (this.currentConvId) {
+        const conv = chatService.getConversationById(this.currentConvId);
+        if (conv) {
+          const partner = userService.getUserById(conv.otherParticipantId);
+          if (partner) {
+            const isFriend = friendService.getFriendshipStatus(partner.uid || partner.userId) === 'friends';
+            const lockedNotice = document.getElementById('chat-locked-notice');
+            const composerArea = document.querySelector('.chat-composer-area');
+            const sendBtn = document.getElementById('composer-send-btn');
+            if (isFriend) {
+              if (lockedNotice) lockedNotice.remove();
+              if (composerArea) composerArea.style.opacity = '1';
+              if (this.composerTextarea) {
+                this.composerTextarea.disabled = false;
+                this.composerTextarea.placeholder = 'Type a message...';
+              }
+              if (sendBtn) sendBtn.style.pointerEvents = 'auto';
+            }
+          }
+        }
+      }
     });
   }
 

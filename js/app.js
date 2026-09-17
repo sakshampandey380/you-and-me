@@ -363,6 +363,22 @@ class App {
         this.chatListView.render();
       }
     });
+
+    window.addEventListener('ym:conversations_updated', () => {
+      if (this.chatListView) {
+        this.chatListView.render();
+      }
+    });
+
+    window.addEventListener('ym:message_received', (e) => {
+      if (this.chatListView) {
+        this.chatListView.render();
+      }
+      if (this.chatView && this.chatView.currentConvId && e.detail?.conversationId === this.chatView.currentConvId) {
+        this.chatView.renderMessages();
+        this.chatView.scrollToBottom();
+      }
+    });
   }
 
   _bindRealtimeEvents() {

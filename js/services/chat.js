@@ -8,6 +8,7 @@ import { storage } from './storage.js';
 import { auth } from './auth.js';
 import { sound } from './sound.js';
 import { notificationService } from './notification.js';
+import { cloudSync } from './cloudSync.js';
 
 class ChatService {
   _getConversations() {
@@ -29,11 +30,24 @@ class ChatService {
 
     const convs = this._getConversations();
     const me = currentUid.toUpperCase();
+    const friendships = storage.get('app_friendships') || [];
+
+    const isFriend = (targetId) => {
+      const target = String(targetId).toUpperCase();
+      return friendships.some(f => {
+        if (f.status !== 'accepted') return false;
+        const u1 = String(f.user1 || f.user1Id || '').toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || '').toUpperCase();
+        return (u1 === me && u2 === target) || (u2 === me && u1 === target);
+      });
+    };
 
     return convs
       .filter(c => {
         if (!c || !Array.isArray(c.participants)) return false;
-        return c.participants.some(p => String(p).toUpperCase() === me);
+        const otherId = c.participants.find(p => String(p).toUpperCase() !== me);
+        if (!otherId) return false;
+        return isFriend(otherId);
       })
       .map(c => {
         const otherId = c.participants.find(p => String(p).toUpperCase() !== me);
@@ -117,11 +131,32 @@ class ChatService {
     const conv = convs.find(c => c.conversationId === convId);
     if (!conv) throw new Error("Conversation not found.");
 
+    const otherParticipantId = conv.participants.find(p => String(p).toUpperCase() !== String(currentUid).toUpperCase());
+
+    // Verify mutual accepted friendship
+    if (otherParticipantId) {
+      const friendships = storage.get('app_friendships') || [];
+      const me = String(currentUid).toUpperCase();
+      const them = String(otherParticipantId).toUpperCase();
+      const isFriend = friendships.some(f => {
+        if (f.status !== 'accepted') return false;
+        const u1 = String(f.user1 || f.user1Id || '').toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || '').toUpperCase();
+        return (u1 === me && u2 === them) || (u2 === me && u1 === them);
+      });
+
+      if (!isFriend) {
+        throw new Error("Chat is locked until your friend request is accepted.");
+      }
+    }
+
     const messageId = "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
 
     const newMsg = {
       id: messageId,
+      conversationId: convId,
       senderId: currentUid,
+      receiverId: otherParticipantId || null,
       type: type, // 'text' | 'image' | 'video' | 'file'
       text: text ? text.trim() : "",
       mediaUrl: mediaUrl || null,
@@ -148,8 +183,12 @@ class ChatService {
       sound.playMessageSent();
     } catch (e) {}
 
+    // Push immediately to cloud sync so other device receives it in real-time!
+    if (otherParticipantId) {
+      cloudSync.sendMessage(newMsg, otherParticipantId);
+    }
+
     // Deliver notification to partner if they are not in the conversation
-    const otherParticipantId = conv.participants.find(p => String(p).toUpperCase() !== String(currentUid).toUpperCase());
     if (otherParticipantId) {
       let previewText = newMsg.text;
       if (type === 'image') previewText = 'Sent a photo 📷';
@@ -265,16 +304,19 @@ class ChatService {
     conv.unreadCount = 0;
     const me = currentUid.toUpperCase();
     let changed = false;
+    const readMsgIds = [];
 
     conv.messages.forEach(m => {
       if (String(m.senderId).toUpperCase() !== me && m.status !== "read") {
         m.status = "read";
+        readMsgIds.push(m.id);
         changed = true;
       }
     });
 
     if (changed) {
       this._saveConversations(convs);
+      cloudSync.markMessagesRead(readMsgIds, convId);
     }
   }
 

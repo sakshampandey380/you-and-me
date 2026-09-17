@@ -9,6 +9,7 @@ import { auth } from './auth.js';
 import { userService } from './user.js';
 import { notificationService } from './notification.js';
 import { chatService } from './chat.js';
+import { cloudSync } from './cloudSync.js';
 
 class FriendService {
   _getFriendships() {
@@ -101,13 +102,30 @@ class FriendService {
     const requests = this._getRequests();
     const reqId = "fr-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
 
+    const targetUid = targetUser.uid || targetUser.userId;
     const newRequest = {
       id: reqId,
       requestId: reqId,
       from: currentUid,
-      to: targetUser.uid || targetUser.userId,
+      to: targetUid,
       senderId: currentUid,
-      receiverId: targetUser.uid || targetUser.userId,
+      receiverId: targetUid,
+      sender: {
+        uid: currentUid,
+        userId: currentUid,
+        name: current.name || current.displayName,
+        displayName: current.displayName || current.name,
+        username: current.username,
+        avatar: current.avatar || current.profilePicture
+      },
+      receiver: {
+        uid: targetUid,
+        userId: targetUid,
+        name: targetUser.name || targetUser.displayName,
+        displayName: targetUser.displayName || targetUser.name,
+        username: targetUser.username,
+        avatar: targetUser.avatar || targetUser.profilePicture
+      },
       status: "pending",
       createdAt: new Date().toISOString()
     };
@@ -115,13 +133,16 @@ class FriendService {
     requests.push(newRequest);
     this._saveRequests(requests);
 
+    // Push immediately to cloud sync so other device receives it in real-time!
+    cloudSync.sendFriendRequest(newRequest);
+
     // Deliver persistent notification to the recipient
     notificationService.addNotification({
       type: 'friend_request',
       title: 'New Friend Request 💌',
       message: `${current.displayName || current.name} (@${current.username}) sent you a friend request.`,
       fromUserId: currentUid,
-      toUserId: targetUser.uid || targetUser.userId,
+      toUserId: targetUid,
       requestId: reqId
     });
 
@@ -195,6 +216,9 @@ class FriendService {
     // Create / unlock conversation between both users
     const conv = chatService.getOrCreateConversation(otherUserId);
 
+    // Push acceptance to cloud sync immediately
+    cloudSync.acceptFriendRequest(requestId);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ym:friends_updated'));
       window.dispatchEvent(new CustomEvent('ym:conversation_unlocked', { detail: { conversationId: conv.conversationId, partnerId: otherUserId } }));
@@ -211,6 +235,9 @@ class FriendService {
 
     // Clear notification
     notificationService.removeNotificationByRequestId(requestId);
+
+    // Push rejection to cloud sync
+    cloudSync.declineFriendRequest(requestId);
 
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('ym:friends_updated'));
@@ -241,6 +268,8 @@ class FriendService {
 
     if (canceledReqId) {
       notificationService.removeNotificationByRequestId(canceledReqId);
+      // Push cancel to cloud sync
+      cloudSync.cancelFriendRequest(canceledReqId, targetUserId);
     }
 
     if (typeof window !== 'undefined') {

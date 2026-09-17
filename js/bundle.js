@@ -297,6 +297,99 @@
   };
   var storage = new StorageService();
 
+  // js/services/sound.js
+  var SoundService = class {
+    constructor() {
+      this.ctx = null;
+    }
+    _initContext() {
+      if (!this.ctx) {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          this.ctx = new AudioCtx();
+        }
+      }
+      if (this.ctx && this.ctx.state === "suspended") {
+        this.ctx.resume();
+      }
+    }
+    _isSoundEnabled() {
+      const settings = storage.get("settings") || {};
+      return settings.soundEnabled !== false;
+    }
+    playMessageSent() {
+      if (!this._isSoundEnabled()) return;
+      try {
+        this._initContext();
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        const now = this.ctx.currentTime;
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.14);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } catch (e) {
+        console.warn("Audio playback error", e);
+      }
+    }
+    playMessageReceived() {
+      if (!this._isSoundEnabled()) return;
+      try {
+        this._initContext();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc1.type = "sine";
+        osc2.type = "triangle";
+        osc1.frequency.setValueAtTime(587.33, now);
+        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.18);
+        osc2.frequency.setValueAtTime(880, now);
+        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.22);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.25);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.26);
+        osc2.stop(now + 0.26);
+      } catch (e) {
+        console.warn("Audio playback error", e);
+      }
+    }
+    playNotification() {
+      if (!this._isSoundEnabled()) return;
+      try {
+        this._initContext();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(659.25, now);
+        osc.frequency.setValueAtTime(987.77, now + 0.08);
+        gain.gain.setValueAtTime(0.14, now);
+        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.28);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } catch (e) {
+        console.warn("Audio playback error", e);
+      }
+    }
+  };
+  var sound = new SoundService();
+
   // js/components/toast.js
   var ToastService = class {
     constructor() {
@@ -364,7 +457,11 @@
       this.isSyncing = false;
       this.lastSyncTime = null;
       this.pollInterval = null;
+      this.activeConvId = null;
       this.syncEndpoint = this._resolveSyncEndpoint();
+      this.knownIncomingReqIds = /* @__PURE__ */ new Set();
+      this.knownAcceptedReqIds = /* @__PURE__ */ new Set();
+      this.knownMessageIds = /* @__PURE__ */ new Set();
       this.init();
     }
     _resolveSyncEndpoint() {
@@ -381,33 +478,249 @@
     init() {
       if (typeof window === "undefined") return;
       this._handleUrlConnect();
+      this._primeKnownState();
       setTimeout(() => {
-        this.pullUsers();
+        this.syncAll();
         const current = auth.getCurrentUser();
         if (current) {
           this.pushUser(current);
         }
-      }, 1200);
-      window.addEventListener("focus", () => this.pullUsers());
+      }, 600);
+      window.addEventListener("focus", () => this.syncAll());
       document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-          this.pullUsers();
+          this.syncAll();
         }
       });
       this.pollInterval = setInterval(() => {
         if (document.visibilityState === "visible") {
-          this.pullUsers();
+          this.syncAll();
         }
-      }, 8e3);
+      }, 1800);
     }
-    /**
-     * Push a registered or updated user to the cloud registry
-     */
+    _primeKnownState() {
+      try {
+        const reqs = storage.get("app_friend_requests") || [];
+        reqs.forEach((r) => {
+          const id = r.id || r.requestId;
+          if (id) {
+            this.knownIncomingReqIds.add(id);
+            if (r.status === "accepted") this.knownAcceptedReqIds.add(id);
+          }
+        });
+        const convs = storage.get("app_conversations") || [];
+        convs.forEach((c) => {
+          if (c.messages) {
+            c.messages.forEach((m) => {
+              if (m.id) this.knownMessageIds.add(m.id);
+            });
+          }
+        });
+      } catch (e) {
+      }
+    }
+    setActiveConversation(convId) {
+      this.activeConvId = convId;
+      if (convId) {
+        this.syncAll();
+      }
+    }
+    // --------------------------------------------------------------------------
+    // MASTER SYNC PULL (Zero-Refresh Real-Time Sync)
+    // --------------------------------------------------------------------------
+    async syncAll() {
+      if (this.isSyncing) return;
+      this.isSyncing = true;
+      try {
+        const current = auth.getCurrentUser();
+        const currentUid = current ? String(current.uid || current.userId || "").toUpperCase() : "";
+        const endpoint = this._resolveSyncEndpoint();
+        const url = new URL(endpoint);
+        if (currentUid) url.searchParams.set("uid", currentUid);
+        if (this.activeConvId) url.searchParams.set("convId", this.activeConvId);
+        const res = await fetch(url.toString(), {
+          method: "GET",
+          headers: { "Accept": "application/json" }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data) return;
+        let hasFriendChanges = false;
+        let hasNotifChanges = false;
+        let hasConvChanges = false;
+        let messageStatusChanged = false;
+        if (Array.isArray(data.users)) {
+          this._mergeUsers(data.users);
+        }
+        if (currentUid) {
+          if (Array.isArray(data.friendRequests)) {
+            const localReqs = storage.get("app_friend_requests") || [];
+            const reqMap = /* @__PURE__ */ new Map();
+            localReqs.forEach((r) => {
+              const id = r.id || r.requestId;
+              if (id) reqMap.set(id, r);
+            });
+            data.friendRequests.forEach((cr) => {
+              const id = cr.id || cr.requestId;
+              if (!id) return;
+              const existing = reqMap.get(id);
+              const isToMe = String(cr.to || cr.receiverId).toUpperCase() === currentUid;
+              const isFromMe = String(cr.from || cr.senderId).toUpperCase() === currentUid;
+              if (!existing && isToMe && cr.status === "pending" && !this.knownIncomingReqIds.has(id)) {
+                this.knownIncomingReqIds.add(id);
+                hasFriendChanges = true;
+                hasNotifChanges = true;
+                try {
+                  sound.playNotification();
+                  const senderName = cr.sender ? cr.sender.name || cr.sender.displayName : "Someone";
+                  toast.info(`New Friend Request from ${senderName}! \u{1F48C}`);
+                } catch (e) {
+                }
+              }
+              if (isFromMe && cr.status === "accepted" && (!existing || existing.status !== "accepted") && !this.knownAcceptedReqIds.has(id)) {
+                this.knownAcceptedReqIds.add(id);
+                hasFriendChanges = true;
+                hasNotifChanges = true;
+                hasConvChanges = true;
+                try {
+                  sound.playNotification();
+                  const receiverName = cr.receiver ? cr.receiver.name || cr.receiver.displayName : "Your friend";
+                  toast.success(`${receiverName} accepted your friend request! \u2728 You can now chat.`);
+                } catch (e) {
+                }
+              }
+              if (!existing || existing.status !== cr.status || existing.updatedAt !== cr.updatedAt) {
+                reqMap.set(id, cr);
+                hasFriendChanges = true;
+              }
+            });
+            if (hasFriendChanges) {
+              storage.set("app_friend_requests", Array.from(reqMap.values()));
+            }
+          }
+          if (Array.isArray(data.friendships)) {
+            const localFriendships = storage.get("app_friendships") || [];
+            const fsMap = /* @__PURE__ */ new Map();
+            localFriendships.forEach((f) => fsMap.set(f.id, f));
+            data.friendships.forEach((cf) => {
+              if (cf && cf.id && !fsMap.has(cf.id)) {
+                fsMap.set(cf.id, cf);
+                hasFriendChanges = true;
+                hasConvChanges = true;
+              }
+            });
+            if (hasFriendChanges) {
+              storage.set("app_friendships", Array.from(fsMap.values()));
+            }
+          }
+          if (Array.isArray(data.notifications)) {
+            const localNotifs = storage.get("app_notifications") || [];
+            const notifMap = /* @__PURE__ */ new Map();
+            localNotifs.forEach((n) => notifMap.set(n.id || n.notificationId, n));
+            data.notifications.forEach((cn) => {
+              const id = cn.id || cn.notificationId;
+              if (id && !notifMap.has(id)) {
+                notifMap.set(id, cn);
+                hasNotifChanges = true;
+              }
+            });
+            if (hasNotifChanges) {
+              storage.set("app_notifications", Array.from(notifMap.values()));
+            }
+          }
+          if (Array.isArray(data.messages) && data.messages.length > 0) {
+            const convs = storage.get("app_conversations") || [];
+            const pendingDeliveredIds = [];
+            const pendingReadIds = [];
+            data.messages.forEach((cm) => {
+              if (!cm || !cm.id || !cm.conversationId) return;
+              const isFromOther = String(cm.senderId).toUpperCase() !== currentUid;
+              let conv = convs.find((c) => c.conversationId === cm.conversationId);
+              if (!conv) {
+                conv = {
+                  conversationId: cm.conversationId,
+                  participants: [currentUid, isFromOther ? cm.senderId : cm.receiverId],
+                  createdAt: cm.timestamp || (/* @__PURE__ */ new Date()).toISOString(),
+                  unreadCount: 0,
+                  messages: []
+                };
+                convs.unshift(conv);
+                hasConvChanges = true;
+              }
+              conv.messages = conv.messages || [];
+              let localMsg = conv.messages.find((m) => m.id === cm.id);
+              if (!localMsg) {
+                conv.messages.push(cm);
+                this.knownMessageIds.add(cm.id);
+                hasConvChanges = true;
+                if (isFromOther) {
+                  pendingDeliveredIds.push(cm.id);
+                  if (this.activeConvId === cm.conversationId) {
+                    cm.status = "read";
+                    pendingReadIds.push(cm.id);
+                  } else {
+                    cm.status = "delivered";
+                    conv.unreadCount = (conv.unreadCount || 0) + 1;
+                  }
+                  try {
+                    sound.playMessageReceived();
+                  } catch (e) {
+                  }
+                  window.dispatchEvent(new CustomEvent("ym:message_received", {
+                    detail: { conversationId: cm.conversationId, message: cm }
+                  }));
+                }
+              } else {
+                if (localMsg.status !== cm.status) {
+                  localMsg.status = cm.status;
+                  messageStatusChanged = true;
+                  hasConvChanges = true;
+                }
+                if (isFromOther && this.activeConvId === cm.conversationId && localMsg.status !== "read") {
+                  localMsg.status = "read";
+                  pendingReadIds.push(cm.id);
+                  messageStatusChanged = true;
+                  hasConvChanges = true;
+                }
+              }
+            });
+            if (hasConvChanges) {
+              storage.set("app_conversations", convs);
+            }
+            if (pendingDeliveredIds.length > 0) {
+              this.markMessagesDelivered(pendingDeliveredIds);
+            }
+            if (pendingReadIds.length > 0) {
+              this.markMessagesRead(pendingReadIds, this.activeConvId);
+            }
+          }
+        }
+        if (hasFriendChanges) {
+          window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        }
+        if (hasNotifChanges) {
+          window.dispatchEvent(new CustomEvent("ym:notifications_updated"));
+        }
+        if (hasConvChanges || messageStatusChanged) {
+          window.dispatchEvent(new CustomEvent("ym:conversations_updated"));
+          window.dispatchEvent(new CustomEvent("ym:message_status_update"));
+        }
+        this.lastSyncTime = Date.now();
+      } catch (err) {
+        console.warn("[CloudSync] syncAll failed:", err.message);
+      } finally {
+        this.isSyncing = false;
+      }
+    }
+    // --------------------------------------------------------------------------
+    // USER SYNC
+    // --------------------------------------------------------------------------
     async pushUser(user) {
       if (!user || !user.uid && !user.userId) return;
       try {
         const endpoint = this._resolveSyncEndpoint();
         const payload = {
+          action: "sync_user",
           uid: user.uid || user.userId,
           userId: user.uid || user.userId,
           name: user.name || user.displayName,
@@ -419,46 +732,14 @@
           status: user.status,
           avatar: user.avatar || user.profilePicture || APP_CONFIG.defaultAvatar
         };
-        const res = await fetch(endpoint, {
+        await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        if (res.ok) {
-          this.lastSyncTime = Date.now();
-        }
       } catch (err) {
-        console.warn("[CloudSync] Could not push user to cloud:", err.message);
       }
     }
-    /**
-     * Pull all registered users from the cloud and merge into LocalStorage
-     */
-    async pullUsers() {
-      if (this.isSyncing) return;
-      this.isSyncing = true;
-      try {
-        const endpoint = this._resolveSyncEndpoint();
-        const res = await fetch(endpoint, {
-          method: "GET",
-          headers: { "Accept": "application/json" }
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.users)) {
-            this._mergeUsers(data.users);
-            this.lastSyncTime = Date.now();
-          }
-        }
-      } catch (err) {
-        console.warn("[CloudSync] Could not pull users from cloud:", err.message);
-      } finally {
-        this.isSyncing = false;
-      }
-    }
-    /**
-     * Merge cloud users into local database without duplicate entries
-     */
     _mergeUsers(cloudUsers) {
       if (!cloudUsers || cloudUsers.length === 0) return;
       const localUsers = storage.getUsers();
@@ -497,27 +778,149 @@
       if (hasChanges) {
         storage.saveUsers(localUsers);
         window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_users" } }));
       }
     }
-    /**
-     * Live lookup if a search query is not found in local cache
-     */
-    async searchOnline(query) {
-      if (!query) return [];
-      await this.pullUsers();
-      return storage.getUsers();
+    // --------------------------------------------------------------------------
+    // FRIEND REQUEST ACTIONS (Instant Cloud Push)
+    // --------------------------------------------------------------------------
+    async sendFriendRequest(request) {
+      if (!request) return;
+      try {
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "send_friend_request",
+            request
+          })
+        });
+        this.syncAll();
+      } catch (e) {
+        console.warn("[CloudSync] sendFriendRequest push failed:", e.message);
+      }
     }
-    /**
-     * Handle deep-link connect parameter e.g. ?connect=SK-EDIRAV or ?u=ram123
-     */
+    async acceptFriendRequest(requestId) {
+      if (!requestId) return;
+      try {
+        const current = auth.getCurrentUser();
+        const currentUid = current ? current.uid || current.userId : "";
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "accept_friend_request",
+            requestId,
+            accepterUid: currentUid
+          })
+        });
+        this.syncAll();
+      } catch (e) {
+        console.warn("[CloudSync] acceptFriendRequest push failed:", e.message);
+      }
+    }
+    async declineFriendRequest(requestId) {
+      if (!requestId) return;
+      try {
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "decline_friend_request",
+            requestId
+          })
+        });
+        this.syncAll();
+      } catch (e) {
+        console.warn("[CloudSync] declineFriendRequest push failed:", e.message);
+      }
+    }
+    async cancelFriendRequest(requestId, toUid = null) {
+      try {
+        const current = auth.getCurrentUser();
+        const currentUid = current ? current.uid || current.userId : "";
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "cancel_friend_request",
+            requestId,
+            fromUid: currentUid,
+            toUid
+          })
+        });
+        this.syncAll();
+      } catch (e) {
+        console.warn("[CloudSync] cancelFriendRequest push failed:", e.message);
+      }
+    }
+    // --------------------------------------------------------------------------
+    // CHAT MESSAGE ACTIONS (Instant Cloud Push & Delivery Tracking)
+    // --------------------------------------------------------------------------
+    async sendMessage(message, receiverId) {
+      if (!message) return;
+      try {
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "send_message",
+            message,
+            receiverId
+          })
+        });
+        setTimeout(() => this.syncAll(), 400);
+      } catch (e) {
+        console.warn("[CloudSync] sendMessage push failed:", e.message);
+      }
+    }
+    async markMessagesDelivered(messageIds) {
+      if (!messageIds || messageIds.length === 0) return;
+      try {
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "mark_delivered",
+            messageIds
+          })
+        });
+      } catch (e) {
+      }
+    }
+    async markMessagesRead(messageIds, convId = null) {
+      try {
+        const current = auth.getCurrentUser();
+        const currentUid = current ? current.uid || current.userId : "";
+        const endpoint = this._resolveSyncEndpoint();
+        await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "mark_read",
+            messageIds,
+            conversationId: convId,
+            readerUid: currentUid
+          })
+        });
+      } catch (e) {
+      }
+    }
+    pullUsers() {
+      return this.syncAll();
+    }
     _handleUrlConnect() {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const targetId = urlParams.get("connect") || urlParams.get("user") || urlParams.get("u");
         if (targetId) {
           setTimeout(async () => {
-            await this.pullUsers();
+            await this.syncAll();
             const users = storage.getUsers();
             const cleanId = targetId.toLowerCase().trim();
             const matched = users.find((u) => {
@@ -535,14 +938,11 @@
                 }
               }
             }
-          }, 1500);
+          }, 1200);
         }
       } catch (e) {
       }
     }
-    /**
-     * Get shareable connect link for current logged in user
-     */
     getShareableLink() {
       const user = auth.getCurrentUser();
       if (!user) return null;
@@ -767,99 +1167,6 @@
   };
   var auth = new AuthService();
 
-  // js/services/sound.js
-  var SoundService = class {
-    constructor() {
-      this.ctx = null;
-    }
-    _initContext() {
-      if (!this.ctx) {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (AudioCtx) {
-          this.ctx = new AudioCtx();
-        }
-      }
-      if (this.ctx && this.ctx.state === "suspended") {
-        this.ctx.resume();
-      }
-    }
-    _isSoundEnabled() {
-      const settings = storage.get("settings") || {};
-      return settings.soundEnabled !== false;
-    }
-    playMessageSent() {
-      if (!this._isSoundEnabled()) return;
-      try {
-        this._initContext();
-        if (!this.ctx) return;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = "sine";
-        const now = this.ctx.currentTime;
-        osc.frequency.setValueAtTime(440, now);
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
-        gain.gain.setValueAtTime(0.12, now);
-        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.14);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.15);
-      } catch (e) {
-        console.warn("Audio playback error", e);
-      }
-    }
-    playMessageReceived() {
-      if (!this._isSoundEnabled()) return;
-      try {
-        this._initContext();
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc1 = this.ctx.createOscillator();
-        const osc2 = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc1.type = "sine";
-        osc2.type = "triangle";
-        osc1.frequency.setValueAtTime(587.33, now);
-        osc1.frequency.exponentialRampToValueAtTime(880, now + 0.18);
-        osc2.frequency.setValueAtTime(880, now);
-        osc2.frequency.exponentialRampToValueAtTime(1174.66, now + 0.22);
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.25);
-        osc1.connect(gain);
-        osc2.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc1.start(now);
-        osc2.start(now);
-        osc1.stop(now + 0.26);
-        osc2.stop(now + 0.26);
-      } catch (e) {
-        console.warn("Audio playback error", e);
-      }
-    }
-    playNotification() {
-      if (!this._isSoundEnabled()) return;
-      try {
-        this._initContext();
-        if (!this.ctx) return;
-        const now = this.ctx.currentTime;
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(659.25, now);
-        osc.frequency.setValueAtTime(987.77, now + 0.08);
-        gain.gain.setValueAtTime(0.14, now);
-        gain.gain.exponentialRampToValueAtTime(1e-3, now + 0.28);
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        osc.start(now);
-        osc.stop(now + 0.3);
-      } catch (e) {
-        console.warn("Audio playback error", e);
-      }
-    }
-  };
-  var sound = new SoundService();
-
   // js/services/notification.js
   var NotificationService = class {
     _getNotifications() {
@@ -995,9 +1302,21 @@
       if (!currentUid) return [];
       const convs = this._getConversations();
       const me = currentUid.toUpperCase();
+      const friendships = storage.get("app_friendships") || [];
+      const isFriend = (targetId) => {
+        const target = String(targetId).toUpperCase();
+        return friendships.some((f) => {
+          if (f.status !== "accepted") return false;
+          const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+          const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+          return u1 === me && u2 === target || u2 === me && u1 === target;
+        });
+      };
       return convs.filter((c) => {
         if (!c || !Array.isArray(c.participants)) return false;
-        return c.participants.some((p) => String(p).toUpperCase() === me);
+        const otherId = c.participants.find((p) => String(p).toUpperCase() !== me);
+        if (!otherId) return false;
+        return isFriend(otherId);
       }).map((c) => {
         const otherId = c.participants.find((p) => String(p).toUpperCase() !== me);
         const lastMsg = c.messages && c.messages.length > 0 ? c.messages[c.messages.length - 1] : null;
@@ -1064,10 +1383,27 @@
       const convs = this._getConversations();
       const conv = convs.find((c) => c.conversationId === convId);
       if (!conv) throw new Error("Conversation not found.");
+      const otherParticipantId = conv.participants.find((p) => String(p).toUpperCase() !== String(currentUid).toUpperCase());
+      if (otherParticipantId) {
+        const friendships = storage.get("app_friendships") || [];
+        const me = String(currentUid).toUpperCase();
+        const them = String(otherParticipantId).toUpperCase();
+        const isFriend = friendships.some((f) => {
+          if (f.status !== "accepted") return false;
+          const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+          const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+          return u1 === me && u2 === them || u2 === me && u1 === them;
+        });
+        if (!isFriend) {
+          throw new Error("Chat is locked until your friend request is accepted.");
+        }
+      }
       const messageId = "msg-" + Date.now() + "-" + Math.random().toString(36).substr(2, 5);
       const newMsg = {
         id: messageId,
+        conversationId: convId,
         senderId: currentUid,
+        receiverId: otherParticipantId || null,
         type,
         // 'text' | 'image' | 'video' | 'file'
         text: text ? text.trim() : "",
@@ -1091,7 +1427,9 @@
         sound.playMessageSent();
       } catch (e) {
       }
-      const otherParticipantId = conv.participants.find((p) => String(p).toUpperCase() !== String(currentUid).toUpperCase());
+      if (otherParticipantId) {
+        cloudSync.sendMessage(newMsg, otherParticipantId);
+      }
       if (otherParticipantId) {
         let previewText = newMsg.text;
         if (type === "image") previewText = "Sent a photo \u{1F4F7}";
@@ -1186,14 +1524,17 @@
       conv.unreadCount = 0;
       const me = currentUid.toUpperCase();
       let changed = false;
+      const readMsgIds = [];
       conv.messages.forEach((m) => {
         if (String(m.senderId).toUpperCase() !== me && m.status !== "read") {
           m.status = "read";
+          readMsgIds.push(m.id);
           changed = true;
         }
       });
       if (changed) {
         this._saveConversations(convs);
+        cloudSync.markMessagesRead(readMsgIds, convId);
       }
     }
     searchInConversation(convId, query) {
@@ -3033,6 +3374,271 @@
     }
   };
 
+  // js/services/friend.js
+  var FriendService = class {
+    _getFriendships() {
+      return storage.get("app_friendships") || [];
+    }
+    _saveFriendships(list) {
+      storage.set("app_friendships", list);
+    }
+    _getRequests() {
+      return storage.get("app_friend_requests") || [];
+    }
+    _saveRequests(list) {
+      storage.set("app_friend_requests", list);
+    }
+    _getCurrentUid() {
+      const current = auth.getCurrentUser();
+      return current ? current.uid || current.userId : null;
+    }
+    getFriendshipStatus(targetUserId) {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !targetUserId) return "none";
+      if (currentUid.toUpperCase() === String(targetUserId).toUpperCase()) return "self";
+      const friendships = this._getFriendships();
+      const isFriend = friendships.some((f) => {
+        if (f.status !== "accepted") return false;
+        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+        const target2 = String(targetUserId).toUpperCase();
+        const me2 = currentUid.toUpperCase();
+        return u1 === me2 && u2 === target2 || u2 === me2 && u1 === target2;
+      });
+      if (isFriend) return "friends";
+      const requests = this._getRequests();
+      const target = String(targetUserId).toUpperCase();
+      const me = currentUid.toUpperCase();
+      const req = requests.find((r) => {
+        if (r.status !== "pending") return false;
+        const from = String(r.from || r.senderId || "").toUpperCase();
+        const to = String(r.to || r.receiverId || "").toUpperCase();
+        return from === me && to === target || from === target && to === me;
+      });
+      if (req) {
+        const from = String(req.from || req.senderId || "").toUpperCase();
+        return from === me ? "request_sent" : "request_received";
+      }
+      return "none";
+    }
+    sendFriendRequest(targetUserId) {
+      const current = auth.getCurrentUser();
+      if (!current) throw new Error("Please log in first.");
+      const currentUid = current.uid || current.userId;
+      if (String(currentUid).toUpperCase() === String(targetUserId).toUpperCase()) {
+        throw new Error("You cannot add yourself as a friend.");
+      }
+      const targetUser = userService.getUserById(targetUserId);
+      if (!targetUser) throw new Error("User not found.");
+      const status = this.getFriendshipStatus(targetUserId);
+      if (status === "friends") throw new Error("You are already friends.");
+      if (status === "request_sent") throw new Error("A request has already been sent.");
+      if (status === "request_received") {
+        const requests2 = this._getRequests();
+        const incoming = requests2.find(
+          (r) => String(r.from || r.senderId || "").toUpperCase() === String(targetUserId).toUpperCase() && String(r.to || r.receiverId || "").toUpperCase() === String(currentUid).toUpperCase()
+        );
+        if (incoming) {
+          return this.acceptFriendRequest(incoming.id || incoming.requestId);
+        }
+      }
+      const requests = this._getRequests();
+      const reqId = "fr-" + Date.now() + "-" + Math.floor(Math.random() * 1e3);
+      const targetUid = targetUser.uid || targetUser.userId;
+      const newRequest = {
+        id: reqId,
+        requestId: reqId,
+        from: currentUid,
+        to: targetUid,
+        senderId: currentUid,
+        receiverId: targetUid,
+        sender: {
+          uid: currentUid,
+          userId: currentUid,
+          name: current.name || current.displayName,
+          displayName: current.displayName || current.name,
+          username: current.username,
+          avatar: current.avatar || current.profilePicture
+        },
+        receiver: {
+          uid: targetUid,
+          userId: targetUid,
+          name: targetUser.name || targetUser.displayName,
+          displayName: targetUser.displayName || targetUser.name,
+          username: targetUser.username,
+          avatar: targetUser.avatar || targetUser.profilePicture
+        },
+        status: "pending",
+        createdAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      requests.push(newRequest);
+      this._saveRequests(requests);
+      cloudSync.sendFriendRequest(newRequest);
+      notificationService.addNotification({
+        type: "friend_request",
+        title: "New Friend Request \u{1F48C}",
+        message: `${current.displayName || current.name} (@${current.username}) sent you a friend request.`,
+        fromUserId: currentUid,
+        toUserId: targetUid,
+        requestId: reqId
+      });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
+      }
+      return newRequest;
+    }
+    acceptFriendRequest(requestId) {
+      const current = auth.getCurrentUser();
+      if (!current) throw new Error("Please log in first.");
+      const currentUid = current.uid || current.userId;
+      const requests = this._getRequests();
+      const reqIndex = requests.findIndex((r) => r.id === requestId || r.requestId === requestId);
+      if (reqIndex === -1) {
+        throw new Error("Friend request not found.");
+      }
+      const request = requests[reqIndex];
+      const senderId = request.from || request.senderId;
+      const receiverId = request.to || request.receiverId;
+      const otherUserId = String(senderId).toUpperCase() === String(currentUid).toUpperCase() ? receiverId : senderId;
+      requests.splice(reqIndex, 1);
+      this._saveRequests(requests);
+      const friendships = this._getFriendships();
+      const exists = friendships.some((f) => {
+        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+        const me = String(currentUid).toUpperCase();
+        const them = String(otherUserId).toUpperCase();
+        return u1 === me && u2 === them || u2 === me && u1 === them;
+      });
+      let newFriendship = null;
+      if (!exists) {
+        newFriendship = {
+          id: "fs-" + Date.now() + "-" + Math.floor(Math.random() * 1e3),
+          user1: currentUid,
+          user2: otherUserId,
+          user1Id: currentUid,
+          user2Id: otherUserId,
+          status: "accepted",
+          createdAt: (/* @__PURE__ */ new Date()).toISOString()
+        };
+        friendships.push(newFriendship);
+        this._saveFriendships(friendships);
+      }
+      notificationService.removeNotificationByRequestId(requestId);
+      notificationService.addNotification({
+        type: "friend_accepted",
+        title: "Friend Request Accepted! \u2728",
+        message: `${current.displayName || current.name} accepted your friend request! You can now chat in 3D.`,
+        fromUserId: currentUid,
+        toUserId: otherUserId,
+        requestId
+      });
+      const conv = chatService.getOrCreateConversation(otherUserId);
+      cloudSync.acceptFriendRequest(requestId);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:conversation_unlocked", { detail: { conversationId: conv.conversationId, partnerId: otherUserId } }));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friendships" } }));
+      }
+      return { success: true, conversation: conv };
+    }
+    rejectFriendRequest(requestId) {
+      const requests = this._getRequests();
+      const filtered = requests.filter((r) => r.id !== requestId && r.requestId !== requestId);
+      this._saveRequests(filtered);
+      notificationService.removeNotificationByRequestId(requestId);
+      cloudSync.declineFriendRequest(requestId);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
+      }
+      return true;
+    }
+    cancelSentRequest(targetUserId) {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !targetUserId) return false;
+      const requests = this._getRequests();
+      let canceledReqId = null;
+      const me = String(currentUid).toUpperCase();
+      const target = String(targetUserId).toUpperCase();
+      const filtered = requests.filter((r) => {
+        const from = String(r.from || r.senderId || "").toUpperCase();
+        const to = String(r.to || r.receiverId || "").toUpperCase();
+        const match = from === me && to === target && r.status === "pending";
+        if (match) canceledReqId = r.id || r.requestId;
+        return !match;
+      });
+      this._saveRequests(filtered);
+      if (canceledReqId) {
+        notificationService.removeNotificationByRequestId(canceledReqId);
+        cloudSync.cancelFriendRequest(canceledReqId, targetUserId);
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
+      }
+      return true;
+    }
+    removeFriend(friendUserId) {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid || !friendUserId) return false;
+      const friendships = this._getFriendships();
+      const me = String(currentUid).toUpperCase();
+      const target = String(friendUserId).toUpperCase();
+      const filtered = friendships.filter((f) => {
+        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
+        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
+        return !(u1 === me && u2 === target || u2 === me && u1 === target);
+      });
+      this._saveFriendships(filtered);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
+        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friendships" } }));
+      }
+      return true;
+    }
+    getFriendsList() {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
+      const friendships = this._getFriendships();
+      const me = String(currentUid).toUpperCase();
+      const friendUids = [];
+      friendships.forEach((f) => {
+        if (f.status === "accepted") {
+          const u1 = String(f.user1 || f.user1Id || "");
+          const u2 = String(f.user2 || f.user2Id || "");
+          if (u1.toUpperCase() === me && u2) friendUids.push(u2);
+          else if (u2.toUpperCase() === me && u1) friendUids.push(u1);
+        }
+      });
+      return friendUids.map((id) => userService.getUserById(id)).filter(Boolean);
+    }
+    getIncomingRequests() {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
+      const requests = this._getRequests();
+      const me = String(currentUid).toUpperCase();
+      return requests.filter((r) => r.status === "pending" && String(r.to || r.receiverId || "").toUpperCase() === me).map((r) => ({
+        requestId: r.id || r.requestId,
+        sender: userService.getUserById(r.from || r.senderId),
+        createdAt: r.createdAt
+      })).filter((item) => item.sender !== null);
+    }
+    getSentRequests() {
+      const currentUid = this._getCurrentUid();
+      if (!currentUid) return [];
+      const requests = this._getRequests();
+      const me = String(currentUid).toUpperCase();
+      return requests.filter((r) => r.status === "pending" && String(r.from || r.senderId || "").toUpperCase() === me).map((r) => ({
+        requestId: r.id || r.requestId,
+        recipient: userService.getUserById(r.to || r.receiverId),
+        createdAt: r.createdAt
+      })).filter((item) => item.recipient !== null);
+    }
+  };
+  var friendService = new FriendService();
+
   // js/views/chatView.js
   var ChatView = class {
     constructor() {
@@ -3061,6 +3667,7 @@
     }
     openConversation(convId) {
       this.currentConvId = convId;
+      cloudSync.setActiveConversation(convId);
       realtime.setActiveConversation(convId);
       chatService.markAsRead(convId);
       const conv = chatService.getConversationById(convId);
@@ -3075,6 +3682,49 @@
       if (statusEl) {
         statusEl.textContent = partner.onlineStatus === "online" ? "Online" : `Last seen ${partner.lastSeen || "recently"}`;
         statusEl.className = `chat-header-status ${partner.onlineStatus === "online" ? "online" : ""}`;
+      }
+      const isFriend = friendService.getFriendshipStatus(partner.uid || partner.userId) === "friends";
+      const composerArea = document.querySelector(".chat-composer-area");
+      let lockedNotice = document.getElementById("chat-locked-notice");
+      if (!isFriend) {
+        if (!lockedNotice && composerArea) {
+          lockedNotice = document.createElement("div");
+          lockedNotice.id = "chat-locked-notice";
+          lockedNotice.style.cssText = "background: rgba(255, 51, 102, 0.12); border: 1px solid rgba(255, 51, 102, 0.3); border-radius: 12px; padding: 12px 16px; margin: 8px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 5;";
+          lockedNotice.innerHTML = `
+          <div style="font-size: 13px; color: var(--color-romantic-rose); display: flex; align-items: center; gap: 8px;">
+            <span>\u{1F512}</span>
+            <span>Chat is locked until <strong>@${partner.username}</strong> accepts your friend request.</span>
+          </div>
+          <button type="button" class="btn-3d btn-primary btn-goto-requests-locked" style="font-size: 11.5px; padding: 5px 12px;">View Requests</button>
+        `;
+          composerArea.parentElement.insertBefore(lockedNotice, composerArea);
+          lockedNotice.querySelector(".btn-goto-requests-locked")?.addEventListener("click", () => {
+            if (window.ymApp) {
+              window.ymApp.switchView("friends");
+              if (window.ymApp.friendsView) {
+                window.ymApp.friendsView.currentSubTab = "requests";
+                window.ymApp.friendsView.render();
+              }
+            }
+          });
+        }
+        if (composerArea) composerArea.style.opacity = "0.4";
+        if (this.composerTextarea) {
+          this.composerTextarea.disabled = true;
+          this.composerTextarea.placeholder = "Chat locked until friend request is accepted...";
+        }
+        const sendBtn = document.getElementById("composer-send-btn");
+        if (sendBtn) sendBtn.style.pointerEvents = "none";
+      } else {
+        if (lockedNotice) lockedNotice.remove();
+        if (composerArea) composerArea.style.opacity = "1";
+        if (this.composerTextarea) {
+          this.composerTextarea.disabled = false;
+          this.composerTextarea.placeholder = "Type a message...";
+        }
+        const sendBtn = document.getElementById("composer-send-btn");
+        if (sendBtn) sendBtn.style.pointerEvents = "auto";
       }
       this.cancelReply();
       this.closeSearch();
@@ -3112,7 +3762,18 @@
     }
     closeConversation() {
       this.currentConvId = null;
+      cloudSync.setActiveConversation(null);
       realtime.setActiveConversation(null);
+      const lockedNotice = document.getElementById("chat-locked-notice");
+      if (lockedNotice) lockedNotice.remove();
+      const composerArea = document.querySelector(".chat-composer-area");
+      if (composerArea) composerArea.style.opacity = "1";
+      if (this.composerTextarea) {
+        this.composerTextarea.disabled = false;
+        this.composerTextarea.placeholder = "Type a message...";
+      }
+      const sendBtn = document.getElementById("composer-send-btn");
+      if (sendBtn) sendBtn.style.pointerEvents = "auto";
       document.querySelector(".app-sidebar")?.classList.remove("chat-open");
       document.querySelector(".app-main-view")?.classList.remove("chat-open");
       document.querySelector(".app-dashboard")?.classList.remove("in-chat");
@@ -3614,6 +4275,46 @@
       document.getElementById("chat-call-btn")?.addEventListener("click", () => {
         toast.info("\u{1F4DE} Secure 3D voice call feature ready for WebRTC connection!");
       });
+      window.addEventListener("ym:message_received", (e) => {
+        if (this.currentConvId && e.detail && e.detail.conversationId === this.currentConvId) {
+          chatService.markAsRead(this.currentConvId);
+          this.renderMessages();
+          this.scrollToBottom();
+        }
+      });
+      window.addEventListener("ym:message_status_update", (e) => {
+        if (this.currentConvId && (!e.detail || !e.detail.conversationId || e.detail.conversationId === this.currentConvId)) {
+          this.renderMessages();
+        }
+      });
+      window.addEventListener("ym:conversations_updated", (e) => {
+        if (this.currentConvId) {
+          this.renderMessages();
+        }
+      });
+      window.addEventListener("ym:friends_updated", () => {
+        if (this.currentConvId) {
+          const conv = chatService.getConversationById(this.currentConvId);
+          if (conv) {
+            const partner = userService.getUserById(conv.otherParticipantId);
+            if (partner) {
+              const isFriend = friendService.getFriendshipStatus(partner.uid || partner.userId) === "friends";
+              const lockedNotice = document.getElementById("chat-locked-notice");
+              const composerArea = document.querySelector(".chat-composer-area");
+              const sendBtn = document.getElementById("composer-send-btn");
+              if (isFriend) {
+                if (lockedNotice) lockedNotice.remove();
+                if (composerArea) composerArea.style.opacity = "1";
+                if (this.composerTextarea) {
+                  this.composerTextarea.disabled = false;
+                  this.composerTextarea.placeholder = "Type a message...";
+                }
+                if (sendBtn) sendBtn.style.pointerEvents = "auto";
+              }
+            }
+          }
+        }
+      });
     }
     sendCurrentTextMessage() {
       if (!this.composerTextarea || !this.currentConvId) return;
@@ -3660,250 +4361,6 @@
       return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
   };
-
-  // js/services/friend.js
-  var FriendService = class {
-    _getFriendships() {
-      return storage.get("app_friendships") || [];
-    }
-    _saveFriendships(list) {
-      storage.set("app_friendships", list);
-    }
-    _getRequests() {
-      return storage.get("app_friend_requests") || [];
-    }
-    _saveRequests(list) {
-      storage.set("app_friend_requests", list);
-    }
-    _getCurrentUid() {
-      const current = auth.getCurrentUser();
-      return current ? current.uid || current.userId : null;
-    }
-    getFriendshipStatus(targetUserId) {
-      const currentUid = this._getCurrentUid();
-      if (!currentUid || !targetUserId) return "none";
-      if (currentUid.toUpperCase() === String(targetUserId).toUpperCase()) return "self";
-      const friendships = this._getFriendships();
-      const isFriend = friendships.some((f) => {
-        if (f.status !== "accepted") return false;
-        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
-        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
-        const target2 = String(targetUserId).toUpperCase();
-        const me2 = currentUid.toUpperCase();
-        return u1 === me2 && u2 === target2 || u2 === me2 && u1 === target2;
-      });
-      if (isFriend) return "friends";
-      const requests = this._getRequests();
-      const target = String(targetUserId).toUpperCase();
-      const me = currentUid.toUpperCase();
-      const req = requests.find((r) => {
-        if (r.status !== "pending") return false;
-        const from = String(r.from || r.senderId || "").toUpperCase();
-        const to = String(r.to || r.receiverId || "").toUpperCase();
-        return from === me && to === target || from === target && to === me;
-      });
-      if (req) {
-        const from = String(req.from || req.senderId || "").toUpperCase();
-        return from === me ? "request_sent" : "request_received";
-      }
-      return "none";
-    }
-    sendFriendRequest(targetUserId) {
-      const current = auth.getCurrentUser();
-      if (!current) throw new Error("Please log in first.");
-      const currentUid = current.uid || current.userId;
-      if (String(currentUid).toUpperCase() === String(targetUserId).toUpperCase()) {
-        throw new Error("You cannot add yourself as a friend.");
-      }
-      const targetUser = userService.getUserById(targetUserId);
-      if (!targetUser) throw new Error("User not found.");
-      const status = this.getFriendshipStatus(targetUserId);
-      if (status === "friends") throw new Error("You are already friends.");
-      if (status === "request_sent") throw new Error("A request has already been sent.");
-      if (status === "request_received") {
-        const requests2 = this._getRequests();
-        const incoming = requests2.find(
-          (r) => String(r.from || r.senderId || "").toUpperCase() === String(targetUserId).toUpperCase() && String(r.to || r.receiverId || "").toUpperCase() === String(currentUid).toUpperCase()
-        );
-        if (incoming) {
-          return this.acceptFriendRequest(incoming.id || incoming.requestId);
-        }
-      }
-      const requests = this._getRequests();
-      const reqId = "fr-" + Date.now() + "-" + Math.floor(Math.random() * 1e3);
-      const newRequest = {
-        id: reqId,
-        requestId: reqId,
-        from: currentUid,
-        to: targetUser.uid || targetUser.userId,
-        senderId: currentUid,
-        receiverId: targetUser.uid || targetUser.userId,
-        status: "pending",
-        createdAt: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      requests.push(newRequest);
-      this._saveRequests(requests);
-      notificationService.addNotification({
-        type: "friend_request",
-        title: "New Friend Request \u{1F48C}",
-        message: `${current.displayName || current.name} (@${current.username}) sent you a friend request.`,
-        fromUserId: currentUid,
-        toUserId: targetUser.uid || targetUser.userId,
-        requestId: reqId
-      });
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
-      }
-      return newRequest;
-    }
-    acceptFriendRequest(requestId) {
-      const current = auth.getCurrentUser();
-      if (!current) throw new Error("Please log in first.");
-      const currentUid = current.uid || current.userId;
-      const requests = this._getRequests();
-      const reqIndex = requests.findIndex((r) => r.id === requestId || r.requestId === requestId);
-      if (reqIndex === -1) {
-        throw new Error("Friend request not found.");
-      }
-      const request = requests[reqIndex];
-      const senderId = request.from || request.senderId;
-      const receiverId = request.to || request.receiverId;
-      const otherUserId = String(senderId).toUpperCase() === String(currentUid).toUpperCase() ? receiverId : senderId;
-      requests.splice(reqIndex, 1);
-      this._saveRequests(requests);
-      const friendships = this._getFriendships();
-      const exists = friendships.some((f) => {
-        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
-        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
-        const me = String(currentUid).toUpperCase();
-        const them = String(otherUserId).toUpperCase();
-        return u1 === me && u2 === them || u2 === me && u1 === them;
-      });
-      let newFriendship = null;
-      if (!exists) {
-        newFriendship = {
-          id: "fs-" + Date.now() + "-" + Math.floor(Math.random() * 1e3),
-          user1: currentUid,
-          user2: otherUserId,
-          user1Id: currentUid,
-          user2Id: otherUserId,
-          status: "accepted",
-          createdAt: (/* @__PURE__ */ new Date()).toISOString()
-        };
-        friendships.push(newFriendship);
-        this._saveFriendships(friendships);
-      }
-      notificationService.removeNotificationByRequestId(requestId);
-      notificationService.addNotification({
-        type: "friend_accepted",
-        title: "Friend Request Accepted! \u2728",
-        message: `${current.displayName || current.name} accepted your friend request! You can now chat in 3D.`,
-        fromUserId: currentUid,
-        toUserId: otherUserId,
-        requestId
-      });
-      const conv = chatService.getOrCreateConversation(otherUserId);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-        window.dispatchEvent(new CustomEvent("ym:conversation_unlocked", { detail: { conversationId: conv.conversationId, partnerId: otherUserId } }));
-        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friendships" } }));
-      }
-      return { success: true, conversation: conv };
-    }
-    rejectFriendRequest(requestId) {
-      const requests = this._getRequests();
-      const filtered = requests.filter((r) => r.id !== requestId && r.requestId !== requestId);
-      this._saveRequests(filtered);
-      notificationService.removeNotificationByRequestId(requestId);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
-      }
-      return true;
-    }
-    cancelSentRequest(targetUserId) {
-      const currentUid = this._getCurrentUid();
-      if (!currentUid || !targetUserId) return false;
-      const requests = this._getRequests();
-      let canceledReqId = null;
-      const me = String(currentUid).toUpperCase();
-      const target = String(targetUserId).toUpperCase();
-      const filtered = requests.filter((r) => {
-        const from = String(r.from || r.senderId || "").toUpperCase();
-        const to = String(r.to || r.receiverId || "").toUpperCase();
-        const match = from === me && to === target && r.status === "pending";
-        if (match) canceledReqId = r.id || r.requestId;
-        return !match;
-      });
-      this._saveRequests(filtered);
-      if (canceledReqId) {
-        notificationService.removeNotificationByRequestId(canceledReqId);
-      }
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friend_requests" } }));
-      }
-      return true;
-    }
-    removeFriend(friendUserId) {
-      const currentUid = this._getCurrentUid();
-      if (!currentUid || !friendUserId) return false;
-      const friendships = this._getFriendships();
-      const me = String(currentUid).toUpperCase();
-      const target = String(friendUserId).toUpperCase();
-      const filtered = friendships.filter((f) => {
-        const u1 = String(f.user1 || f.user1Id || "").toUpperCase();
-        const u2 = String(f.user2 || f.user2Id || "").toUpperCase();
-        return !(u1 === me && u2 === target || u2 === me && u1 === target);
-      });
-      this._saveFriendships(filtered);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("ym:friends_updated"));
-        window.dispatchEvent(new CustomEvent("ym:storage_changed", { detail: { key: "app_friendships" } }));
-      }
-      return true;
-    }
-    getFriendsList() {
-      const currentUid = this._getCurrentUid();
-      if (!currentUid) return [];
-      const friendships = this._getFriendships();
-      const me = String(currentUid).toUpperCase();
-      const friendUids = [];
-      friendships.forEach((f) => {
-        if (f.status === "accepted") {
-          const u1 = String(f.user1 || f.user1Id || "");
-          const u2 = String(f.user2 || f.user2Id || "");
-          if (u1.toUpperCase() === me && u2) friendUids.push(u2);
-          else if (u2.toUpperCase() === me && u1) friendUids.push(u1);
-        }
-      });
-      return friendUids.map((id) => userService.getUserById(id)).filter(Boolean);
-    }
-    getIncomingRequests() {
-      const currentUid = this._getCurrentUid();
-      if (!currentUid) return [];
-      const requests = this._getRequests();
-      const me = String(currentUid).toUpperCase();
-      return requests.filter((r) => r.status === "pending" && String(r.to || r.receiverId || "").toUpperCase() === me).map((r) => ({
-        requestId: r.id || r.requestId,
-        sender: userService.getUserById(r.from || r.senderId),
-        createdAt: r.createdAt
-      })).filter((item) => item.sender !== null);
-    }
-    getSentRequests() {
-      const currentUid = this._getCurrentUid();
-      if (!currentUid) return [];
-      const requests = this._getRequests();
-      const me = String(currentUid).toUpperCase();
-      return requests.filter((r) => r.status === "pending" && String(r.from || r.senderId || "").toUpperCase() === me).map((r) => ({
-        requestId: r.id || r.requestId,
-        recipient: userService.getUserById(r.to || r.receiverId),
-        createdAt: r.createdAt
-      })).filter((item) => item.recipient !== null);
-    }
-  };
-  var friendService = new FriendService();
 
   // js/views/friendsView.js
   var FriendsView = class {
@@ -5344,9 +5801,28 @@
         }
         return;
       }
-      const conv = chatService.getOrCreateConversation(user.userId);
-      if (this.onOpenConversation) {
-        this.onOpenConversation(conv.conversationId);
+      const status = friendService.getFriendshipStatus(user.userId);
+      if (status === "friends") {
+        const conv = chatService.getOrCreateConversation(user.userId);
+        if (this.onOpenConversation) {
+          this.onOpenConversation(conv.conversationId);
+        }
+      } else if (status === "request_sent") {
+        toast.info(`Friend request is pending with @${user.username}. Chat is locked until accepted.`);
+        const conv = chatService.getOrCreateConversation(user.userId);
+        if (this.onOpenConversation) {
+          this.onOpenConversation(conv.conversationId);
+        }
+      } else if (status === "request_received") {
+        toast.info(`@${user.username} sent you a friend request. Accept it in Requests to chat! \u{1F48C}`);
+        if (this.onOpenFriendsView) {
+          this.onOpenFriendsView("requests");
+        }
+      } else {
+        toast.info(`Send a friend request to @${user.username} first to unlock chat.`);
+        if (this.onOpenFriendsView) {
+          this.onOpenFriendsView("search");
+        }
       }
     }
     _highlightMatch(text, query) {
@@ -5665,6 +6141,20 @@
         this._updateBadges();
         if (this.chatListView) {
           this.chatListView.render();
+        }
+      });
+      window.addEventListener("ym:conversations_updated", () => {
+        if (this.chatListView) {
+          this.chatListView.render();
+        }
+      });
+      window.addEventListener("ym:message_received", (e) => {
+        if (this.chatListView) {
+          this.chatListView.render();
+        }
+        if (this.chatView && this.chatView.currentConvId && e.detail?.conversationId === this.chatView.currentConvId) {
+          this.chatView.renderMessages();
+          this.chatView.scrollToBottom();
         }
       });
     }
